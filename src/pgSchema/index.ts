@@ -105,3 +105,37 @@ export const companyMetricsRelations = relations(companyMetrics, ({ one }) => ({
     references: [companies.id],
   }),
 }));
+
+
+export const assets = pgTable('assets', {
+  id: serial('id').primaryKey(),
+  symbol: varchar('symbol', { length: 10 }).notNull().unique(),
+  baseAsset: varchar('base_asset', { length: 255 }),
+  quoteAsset: varchar('quote_asset', { length: 255 }),
+  decimalPlaces: integer('decimal_places').default(2),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const priceSnapshots = pgTable('price_snapshots', {
+  id: serial('id').primaryKey(),
+
+  // 1. 改用 decimal 確保價格精確
+  price: decimal('price', { precision: 20, scale: 6 }).notNull(),
+  // 漲跌幅通常百分比也很適合用 decimal
+  change: decimal('change', { precision: 10, scale: 4 }),
+  assetId: integer('asset_id').references(() => assets.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// --- 定義兩者之間的關聯 ---
+export const assetsRelations = relations(assets, ({ many }) => ({
+  snapshots: many(priceSnapshots),
+}));
+
+export const priceSnapshotsRelations = relations(priceSnapshots, ({ one }) => ({
+  asset: one(assets, {
+    fields: [priceSnapshots.assetId],
+    references: [assets.id],
+  }),
+}));
