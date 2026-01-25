@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, integer, numeric, timestamp, pgEnum, uuid, bigserial, index, date } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, integer, numeric, timestamp, pgEnum, uuid, bigserial, index, date, decimal } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
 import { relations } from 'drizzle-orm';
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'paid', 'shipped', 'completed', 'cancelled']);
@@ -76,4 +76,32 @@ export const stockTradesRelations = relations(stockTrades, ({ one }) => ({
 
 export const companiesRelations = relations(companies, ({ many }) => ({
   trades: many(stockTrades),
+  metrics: many(companyMetrics),
+}));
+
+export const companyMetrics = pgTable('company_metrics', {
+  id: serial('id').primaryKey(),
+  companyId: integer('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+
+  // 價格與估值
+  price: decimal('price', { precision: 15, scale: 2 }),
+  peTrailing: decimal('pe_trailing', { precision: 10, scale: 2 }),
+  peForward: decimal('pe_forward', { precision: 10, scale: 2 }),
+  epsTrailing: decimal('eps_trailing', { precision: 10, scale: 2 }),
+  epsForward: decimal('eps_forward', { precision: 10, scale: 2 }),
+
+  // 成交量與市值
+  volume: integer('volume'),
+  marketCap: varchar('market_cap', { length: 32 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()),
+});
+
+export const companyMetricsRelations = relations(companyMetrics, ({ one }) => ({
+  company: one(companies, {
+    fields: [companyMetrics.companyId],
+    references: [companies.id],
+  }),
 }));

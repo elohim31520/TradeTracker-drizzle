@@ -31,5 +31,6 @@ export function deleteFolderRecursive(myPath: string): void {
 }
 
 export function decodeBuffer(buffer: Buffer | ArrayBuffer, encoding: string = 'utf-8'): string {
-	return iconv.decode(Buffer.from(buffer), encoding)
+	const buf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer as ArrayBuffer);
+	return iconv.decode(buf, encoding);
 }
