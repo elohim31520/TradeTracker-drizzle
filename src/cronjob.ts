@@ -1,5 +1,5 @@
-import { CronJob } from 'cron'; // 只需要這行
-// import { crawlMarketIndex } from './modules/crawler/marketIndex'
+import { CronJob } from 'cron';
+import { crawlMarketPriceSnapshots } from './modules/crawler/priceSnapshots'
 import { crawlCompanyMetrics } from './modules/crawler/companyMetrics'
 // import { crawlStockPrices } from './modules/crawler/stockPrices'
 // import { crawlTechNews } from './modules/crawler/technews'
@@ -31,10 +31,10 @@ if (process.env.NODE_ENV === 'production') {
 		mission: crawlCompanyMetrics,
 	})
 
-	// createCronJob({
-	// 	schedule: '*/10 * * * *',
-	// 	mission: crawlMarketIndex,
-	// })
+	createCronJob({
+		schedule: '*/10 * * * *',
+		mission: crawlMarketPriceSnapshots,
+	})
 
 	// // 早上更新 stock prices，原因是爬蟲的網站可能是美東晚上才更新
 	// createCronJob({
@@ -48,14 +48,14 @@ if (process.env.NODE_ENV === 'production') {
 	// })
 } else {
 	createCronJob({
-		schedule: '9 * * * *',
+		schedule: '0 15 * * *',
 		mission: crawlCompanyMetrics,
 	})
 
-	// createCronJob({
-	// 	schedule: '* * * * *',
-	// 	mission: crawlMarketIndex,
-	// })
+	createCronJob({
+		schedule: '* * * * *',
+		mission: crawlMarketPriceSnapshots,
+	})
 
 	// createCronJob({
 	// 	schedule: '0 * * * *',
