@@ -1,10 +1,8 @@
 import Joi from 'joi'
 
 const createAdminSchema = Joi.object({
-	userId: Joi.alternatives()
-		.try(Joi.number(), Joi.string().pattern(/^\d+$/))
-		.required(),
-})
+	userId: Joi.string().uuid().required(),
+});
 
 const deleteUserSchema = createAdminSchema
 

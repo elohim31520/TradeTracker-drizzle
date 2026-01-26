@@ -3,6 +3,7 @@ import express, { Request, Response } from 'express'
 import { db } from './db/pg'
 import userRoutes from './routes/users'
 import tradeRoutes from './routes/trade'
+import adminRoutes from './routes/admin'
 import errorHandler from './middleware/errorHandler'
 import 'dotenv/config';
 
@@ -10,19 +11,18 @@ const app = express()
 const port = Number(process.env.PORT)
 app.use(express.json({ type: ['application/json', 'application/json; charset=UTF-8'] }))
 
-function setupRoutes() {
-	app.use('/users', userRoutes)
-	app.use('/trades', tradeRoutes)
-}
+app.use('/users', userRoutes)
+app.use('/trades', tradeRoutes)
+app.use('/admins', adminRoutes)
+
+app.use(errorHandler)
 
 async function bootstrap() {
 	try {
 		await db.execute('SELECT 1')
 		console.log('📊 資料庫連線成功')
 
-		setupRoutes()
-
-		app.use(errorHandler)
+		if (process.env.NODE_ENV == 'test') return
 
 		console.log('🔧 正在啟動 HTTP 伺服器...')
 		const server = app.listen(port, 'localhost', () => {
@@ -42,7 +42,6 @@ async function bootstrap() {
 	}
 }
 
-// Export app for testing
-export { app, setupRoutes }
-
 bootstrap()
+
+export default app

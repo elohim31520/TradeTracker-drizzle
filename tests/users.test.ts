@@ -1,10 +1,8 @@
 import request from 'supertest'
-import express from 'express'
 import { db } from '../src/db/pg'
-import { users } from '../src/db/schema/index'
-import userRoutes from '../src/routes/users'
-import errorHandler from '../src/middleware/errorHandler'
+import { users } from '../src/db/schema'
 import { eq } from 'drizzle-orm'
+import app from '../src/index'
 
 // Mock Google auth service for testing
 // jest.mock('../services/googleAuthService', () => {
@@ -33,7 +31,6 @@ export const setMockUserId = (id: string) => {
 }
 
 describe('Users API', () => {
-	let app: express.Application
 	let testUser: any
 
 	beforeAll(async () => {
@@ -44,12 +41,6 @@ describe('Users API', () => {
 			console.error('Database connection failed:', error)
 			throw error
 		}
-
-		// 為測試創建獨立的 app 實例
-		app = express()
-		app.use(express.json())
-		app.use('/users', userRoutes)
-		app.use(errorHandler)
 	})
 
 	afterAll(async () => {
