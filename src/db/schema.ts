@@ -8,8 +8,34 @@ export const users = pgTable('users', {
   id: uuid('id').primaryKey().$defaultFn(() => uuidv7()),
   name: text('name').notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
-  password: varchar('password', { length: 255 }) //不設定notNull 因為會有第三方登入
+  password: varchar('password', { length: 255 }), //不設定notNull 因為會有第三方登入
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+export const admins = pgTable('admins', {
+  id: uuid('id').primaryKey().$defaultFn(() => uuidv7()),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const usersRelations = relations(users, ({ one }) => ({
+  admin: one(admins, {
+    fields: [users.id],
+    references: [admins.userId],
+  }),
+}));
+
+export const adminsRelations = relations(admins, ({ one }) => ({
+  user: one(users, {
+    fields: [admins.userId],
+    references: [users.id],
+  }),
+}));
 
 export const userThirdpartyAccounts = pgTable('user_thirdparty_accounts', {
   id: uuid('id').primaryKey().$defaultFn(() => uuidv7()),
