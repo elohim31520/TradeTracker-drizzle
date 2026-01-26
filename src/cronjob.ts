@@ -1,7 +1,7 @@
 import { CronJob } from 'cron';
 import { crawlMarketPriceSnapshots } from './modules/crawler/priceSnapshots'
 import { crawlCompanyMetrics } from './modules/crawler/companyMetrics'
-// import { crawlStockPrices } from './modules/crawler/stockPrices'
+import { crawlStockPrices } from './modules/crawler/stockPrices'
 // import { crawlTechNews } from './modules/crawler/technews'
 
 interface CronConfig {
@@ -37,10 +37,10 @@ if (process.env.NODE_ENV === 'production') {
 	})
 
 	// // 早上更新 stock prices，原因是爬蟲的網站可能是美東晚上才更新
-	// createCronJob({
-	// 	schedule: '0 10 * * *',
-	// 	mission: crawlStockPrices,
-	// })
+	createCronJob({
+		schedule: '0 10 * * *',
+		mission: crawlStockPrices,
+	})
 
 	// createCronJob({
 	// 	schedule: '41 */6 * * *',
@@ -53,14 +53,14 @@ if (process.env.NODE_ENV === 'production') {
 	})
 
 	createCronJob({
-		schedule: '* * * * *',
+		schedule: '*/10 * * * *',
 		mission: crawlMarketPriceSnapshots,
 	})
 
-	// createCronJob({
-	// 	schedule: '0 * * * *',
-	// 	mission: crawlStockPrices,
-	// })
+	createCronJob({
+		schedule: '10 * * * *',
+		mission: crawlStockPrices,
+	})
 
 	// createCronJob({
 	// 	schedule: '41 * * * *',

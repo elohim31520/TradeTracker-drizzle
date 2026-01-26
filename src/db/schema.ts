@@ -139,3 +139,21 @@ export const priceSnapshotsRelations = relations(priceSnapshots, ({ one }) => ({
     references: [assets.id],
   }),
 }));
+
+export const stockPrices = pgTable('stock_prices', {
+  id: serial('id').primaryKey(),
+  price: decimal('price', { precision: 10, scale: 2 }),
+  dayChg: decimal('day_chg'),
+  weight: decimal('weight', { precision: 10, scale: 2 }),
+  companyId: integer('company_id').references(() => companies.id),
+  createdAt: timestamp('created_at')
+    .defaultNow()
+    .notNull(),
+});
+
+export const stockPricesRelations = relations(stockPrices, ({ one }) => ({
+  company: one(companies, {
+    fields: [stockPrices.companyId],
+    references: [companies.id],
+  }),
+}));
