@@ -1,5 +1,5 @@
 import { InferInsertModel, InferSelectModel } from 'drizzle-orm';
-import { stockTrades, companies } from '../pgSchema/index';
+import { stockTrades, companies } from '../db/schema';
 
 // 推斷出來的類型
 export type Trade = InferSelectModel<typeof stockTrades>;

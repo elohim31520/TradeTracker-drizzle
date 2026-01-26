@@ -3,7 +3,7 @@ import 'dotenv/config';
 import Sp500Fetcher from '../financialDataFetcher';
 import logger from '../logger';
 import { db } from '../../db/pg';
-import { companies, companyMetrics } from '../../pgSchema';
+import { companies, companyMetrics } from '../../db/schema';
 
 export interface CompanyMetricsInsert {
 	price?: string;

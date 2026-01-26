@@ -8,7 +8,7 @@ import { BTCUSD, USOIL, DXY, US10Y, XAUUSD } from '../../constant/market'
 import { decodeBuffer } from '../util'
 import logger from '../logger'
 import { db } from '../../db/pg'
-import { assets, priceSnapshots } from '../../pgSchema';
+import { assets, priceSnapshots } from '../../db/schema';
 
 type NewPriceSnapshot = typeof priceSnapshots.$inferInsert;
 

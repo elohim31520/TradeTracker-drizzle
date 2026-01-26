@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { db } from '../db/pg'
-import { users } from '../pgSchema'
+import { users } from '../db/schema'
 import { generateToken, generateSalt, sha256 } from '../modules/crypto'
 import { ClientError, ConflictError } from '../modules/errors'
 import { USER_NOT_FOUND, PASSWORD_INCORRECT } from '../constant/userErrors'

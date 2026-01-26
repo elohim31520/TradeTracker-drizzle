@@ -1,7 +1,7 @@
 import request from 'supertest'
 import express from 'express'
 import { db } from '../src/db/pg'
-import { users } from '../src/pgSchema/index'
+import { users } from '../src/db/schema/index'
 import userRoutes from '../src/routes/users'
 import errorHandler from '../src/middleware/errorHandler'
 import { eq } from 'drizzle-orm'

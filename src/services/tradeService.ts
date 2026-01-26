@@ -1,5 +1,5 @@
 import { db } from '../db/pg'
-import { stockTrades, companies } from '../pgSchema'
+import { stockTrades, companies } from '../db/schema'
 import { NewTrade, Trade, TradeWithCompany, GetAllTradesParams, PaginatedTrades } from '../types/trade'
 import { ClientError } from '../modules/errors'
 import { eq, and, desc, sql } from 'drizzle-orm'

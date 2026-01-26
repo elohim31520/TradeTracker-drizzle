@@ -1,5 +1,5 @@
 import { db } from '../db/pg'
-import { companies } from '../pgSchema'
+import { companies } from './schema'
 
 const companiesData = [
 	{ name: 'Apple Inc.', symbol: 'AAPL' },

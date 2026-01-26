@@ -1,5 +1,5 @@
 import { db } from './pg';
-import { assets } from '../pgSchema';
+import { assets } from './schema';
 
 async function main() {
     console.log('🌱 開始植入 Asset 資料...');
