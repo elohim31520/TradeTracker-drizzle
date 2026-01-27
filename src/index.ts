@@ -4,6 +4,7 @@ import { db } from './db/pg'
 import userRoutes from './routes/users'
 import tradeRoutes from './routes/trade'
 import adminRoutes from './routes/admin'
+import companyMetrics from './routes/companyMetrics'
 import errorHandler from './middleware/errorHandler'
 import 'dotenv/config';
 
@@ -14,6 +15,7 @@ app.use(express.json({ type: ['application/json', 'application/json; charset=UTF
 app.use('/users', userRoutes)
 app.use('/trades', tradeRoutes)
 app.use('/admins', adminRoutes)
+app.use('/company-metrics', companyMetrics)
 
 app.use(errorHandler)
 
