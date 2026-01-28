@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, integer, numeric, timestamp, pgEnum, uuid, bigserial, index, date, decimal } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, integer, numeric, timestamp, pgEnum, uuid, bigserial, index, date, decimal, uniqueIndex } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
 import { relations } from 'drizzle-orm';
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'paid', 'shipped', 'completed', 'cancelled']);
@@ -169,7 +169,7 @@ export const priceSnapshotsRelations = relations(priceSnapshots, ({ one }) => ({
 export const stockPrices = pgTable('stock_prices', {
   id: serial('id').primaryKey(),
   price: decimal('price', { precision: 10, scale: 2 }),
-  dayChg: decimal('day_chg'),
+  dayChg: decimal('day_chg', { precision: 10, scale: 2 }),
   weight: decimal('weight', { precision: 10, scale: 2 }),
   companyId: integer('company_id').references(() => companies.id),
   createdAt: timestamp('created_at')
@@ -183,3 +183,23 @@ export const stockPricesRelations = relations(stockPrices, ({ one }) => ({
     references: [companies.id],
   }),
 }));
+
+export const portfolios = pgTable(
+  'portfolios',
+  {
+    id: serial('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    companyId: integer('company_id')
+      .notNull()
+      .references(() => companies.id),
+    quantity: numeric('quantity', { precision: 10, scale: 2 }).notNull(),
+    averagePrice: decimal('average_price', { precision: 10, scale: 2 }).notNull().default('0.00'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('unique_user_company').on(table.userId, table.companyId),
+  ]
+);

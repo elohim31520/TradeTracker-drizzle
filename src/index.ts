@@ -5,6 +5,7 @@ import userRoutes from './routes/users'
 import tradeRoutes from './routes/trade'
 import adminRoutes from './routes/admin'
 import companyMetrics from './routes/companyMetrics'
+import portfolios from './routes/portfolio'
 import errorHandler from './middleware/errorHandler'
 import 'dotenv/config';
 
@@ -16,6 +17,7 @@ app.use('/users', userRoutes)
 app.use('/trades', tradeRoutes)
 app.use('/admins', adminRoutes)
 app.use('/company-metrics', companyMetrics)
+app.use('/portfolio', portfolios)
 
 app.use(errorHandler)
 
