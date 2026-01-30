@@ -5,14 +5,12 @@ import { ClientError } from '../modules/errors'
 import { eq, and, desc, sql } from 'drizzle-orm'
 
 class TradeService {
-	async create(data: NewTrade): Promise<Trade> {
-		const [trade] = await db.insert(stockTrades).values(data).returning()
-		return trade
+	async create(data: NewTrade, tx: any = db): Promise<Trade[]> {
+		return await tx.insert(stockTrades).values(data).returning()
 	}
 
-	async bulkCreate(data: NewTrade[]): Promise<Trade[]> {
-		const trades = await db.insert(stockTrades).values(data).returning()
-		return trades
+	async bulkCreate(data: NewTrade[], tx: any = db): Promise<Trade[]> {
+		return await tx.insert(stockTrades).values(data).returning()
 	}
 
 	async getAll({ userId, page, size }: GetAllTradesParams): Promise<PaginatedTrades> {

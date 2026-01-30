@@ -2,7 +2,7 @@ import tradeService from '../services/tradeService'
 import { success, fail } from '../modules/responseHelper'
 import { Request, Response, NextFunction } from 'express'
 import { ClientError } from '../modules/errors'
-import { NewTrade } from '../types/trade'
+import { rabbitMQ } from '../modules/rabbitMQManager'
 
 class TradeController {
 	async create(req: Request, res: Response, next: NextFunction) {
@@ -11,9 +11,11 @@ class TradeController {
 			const tradeData = {
 				...req.body,
 				userId,
-			}
-			const trade = await tradeService.create(tradeData as NewTrade)
-			res.status(201).json(success(trade))
+			};
+
+			await rabbitMQ.publish('trade_exchange', 'trade.create.single', tradeData);
+			res.status(202).json(success({ message: 'Trade processing started' }))
+
 		} catch (error) {
 			next(error)
 		}
@@ -26,8 +28,9 @@ class TradeController {
 				...item,
 				userId,
 			}))
-			const trades = await tradeService.bulkCreate(dataToCreate)
-			res.json(success(trades))
+
+			await rabbitMQ.publish('trade_exchange', 'trade.create.bulk', dataToCreate);
+			res.status(202).json(success({ message: 'Bulk trades processing started' }));
 		} catch (error) {
 			next(error)
 		}

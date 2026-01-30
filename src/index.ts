@@ -8,6 +8,7 @@ import companyMetrics from './routes/companyMetrics'
 import portfolios from './routes/portfolio'
 import errorHandler from './middleware/errorHandler'
 import 'dotenv/config';
+import { startTradeWorker } from './workers/tradeWorker';
 
 const app = express()
 const port = Number(process.env.PORT)
@@ -27,6 +28,8 @@ async function bootstrap() {
 		console.log('📊 資料庫連線成功')
 
 		if (process.env.NODE_ENV == 'test') return
+
+		startTradeWorker();
 
 		console.log('🔧 正在啟動 HTTP 伺服器...')
 		const server = app.listen(port, 'localhost', () => {
