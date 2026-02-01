@@ -6,6 +6,7 @@ import tradeRoutes from './routes/trade'
 import adminRoutes from './routes/admin'
 import companyMetrics from './routes/companyMetrics'
 import portfolios from './routes/portfolio'
+import stockRoutes from './routes/stock'
 import errorHandler from './middleware/errorHandler'
 import 'dotenv/config';
 import { startTradeWorker } from './workers/tradeWorker';
@@ -19,6 +20,7 @@ app.use('/trades', tradeRoutes)
 app.use('/admins', adminRoutes)
 app.use('/company-metrics', companyMetrics)
 app.use('/portfolio', portfolios)
+app.use('/stock', stockRoutes)
 
 app.use(errorHandler)
 
