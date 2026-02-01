@@ -1,16 +1,16 @@
-import { pgTable, serial, text, varchar, integer, numeric, timestamp, pgEnum, uuid, bigserial, index, date, decimal, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, integer, numeric, timestamp, pgEnum, uuid, bigserial, index, date, decimal, uniqueIndex, boolean } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
 import { relations } from 'drizzle-orm';
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'paid', 'shipped', 'completed', 'cancelled']);
 
-// 1. 使用者表
+// 使用者表
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().$defaultFn(() => uuidv7()),
   name: text('name').notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   password: varchar('password', { length: 255 }), //不設定notNull 因為會有第三方登入
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
 });
 
 export const admins = pgTable('admins', {
@@ -20,7 +20,7 @@ export const admins = pgTable('admins', {
     .references(() => users.id, { onDelete: 'cascade' }),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
 });
 
 export const usersRelations = relations(users, ({ one }) => ({
@@ -50,7 +50,7 @@ export const userThirdpartyAccounts = pgTable('user_thirdparty_accounts', {
   picture: text('picture'),
   name: text('name'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
 });
 
 export const userThirdpartyAccountsRelations = relations(userThirdpartyAccounts, ({ one }) => ({
@@ -64,11 +64,11 @@ export const stockTradeTypeEnum = pgEnum('stock_trade_type', ['buy', 'sell']);
 
 // 公司表
 export const companies = pgTable('companies', {
-  id: serial('id').primaryKey(),
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
   name: text('name').notNull(),
   symbol: varchar('symbol', { length: 10 }).notNull().unique(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
 });
 
 // 交易表
@@ -80,6 +80,7 @@ export const stockTrades = pgTable('stock_trades', {
   quantity: numeric('quantity', { precision: 10, scale: 2 }).notNull(),
   price: numeric('price', { precision: 10, scale: 2 }).notNull(),
   tradeDate: date('trade_date', { mode: 'string' }).defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => {
   return {
     // 增加索引大幅提升 API 查詢速度
@@ -106,7 +107,7 @@ export const companiesRelations = relations(companies, ({ many }) => ({
 }));
 
 export const companyMetrics = pgTable('company_metrics', {
-  id: serial('id').primaryKey(),
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
   companyId: integer('company_id')
     .notNull()
     .references(() => companies.id, { onDelete: 'cascade' }),
@@ -134,17 +135,17 @@ export const companyMetricsRelations = relations(companyMetrics, ({ one }) => ({
 
 
 export const assets = pgTable('assets', {
-  id: serial('id').primaryKey(),
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
   symbol: varchar('symbol', { length: 10 }).notNull().unique(),
   baseAsset: varchar('base_asset', { length: 255 }),
   quoteAsset: varchar('quote_asset', { length: 255 }),
   decimalPlaces: integer('decimal_places').default(2),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
 });
 
 export const priceSnapshots = pgTable('price_snapshots', {
-  id: serial('id').primaryKey(),
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
 
   // 1. 改用 decimal 確保價格精確
   price: decimal('price', { precision: 20, scale: 6 }).notNull(),
@@ -167,14 +168,12 @@ export const priceSnapshotsRelations = relations(priceSnapshots, ({ one }) => ({
 }));
 
 export const stockPrices = pgTable('stock_prices', {
-  id: serial('id').primaryKey(),
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
   price: decimal('price', { precision: 10, scale: 2 }),
   dayChg: decimal('day_chg', { precision: 10, scale: 2 }),
   weight: decimal('weight', { precision: 10, scale: 2 }),
   companyId: integer('company_id').references(() => companies.id),
-  createdAt: timestamp('created_at')
-    .defaultNow()
-    .notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 export const stockPricesRelations = relations(stockPrices, ({ one }) => ({
@@ -187,7 +186,7 @@ export const stockPricesRelations = relations(stockPrices, ({ one }) => ({
 export const portfolios = pgTable(
   'portfolios',
   {
-    id: serial('id').primaryKey(),
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id),
@@ -197,9 +196,24 @@ export const portfolios = pgTable(
     quantity: numeric('quantity', { precision: 10, scale: 2 }).notNull(),
     averagePrice: decimal('average_price', { precision: 10, scale: 2 }).notNull().default('0.00'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
   },
   (table) => [
     uniqueIndex('unique_user_company').on(table.userId, table.companyId),
   ]
 );
+
+export const statusEnum = pgEnum('status', ['draft', 'published', 'archived']);
+
+export const news = pgTable('News', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  content: text('content').notNull(),
+  contentEn: text('content_en'),
+  contentHash: varchar('content_hash', { length: 32 }).notNull().unique(),
+  status: statusEnum('status').default('draft').notNull(),
+  publishedAt: timestamp('published_at'),
+  viewCount: integer('view_count').default(0).notNull(),
+  isTop: boolean('is_top').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
+});
