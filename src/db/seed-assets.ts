@@ -6,49 +6,34 @@ async function main() {
 
     const data = [
         {
-            id: 1,
             symbol: 'USOIL',
             baseAsset: 'WTI',
             quoteAsset: 'USD',
             decimalPlaces: 3,
-            createdAt: new Date('2026-01-06 14:07:38'),
-            updatedAt: new Date('2026-01-06 14:07:38'),
         },
         {
-            id: 2,
             symbol: 'US10Y',
             baseAsset: 'US10Y',
             quoteAsset: 'PERCENT',
             decimalPlaces: 3,
-            createdAt: new Date('2026-01-06 14:07:38'),
-            updatedAt: new Date('2026-01-06 14:07:38'),
         },
         {
-            id: 3,
             symbol: 'XAUUSD',
             baseAsset: 'XAU',
             quoteAsset: 'USD',
             decimalPlaces: 2,
-            createdAt: new Date('2026-01-06 14:07:38'),
-            updatedAt: new Date('2026-01-06 14:07:38'),
         },
         {
-            id: 4,
             symbol: 'BTCUSD',
             baseAsset: 'BTC',
             quoteAsset: 'USD',
             decimalPlaces: 2,
-            createdAt: new Date('2026-01-06 14:07:38'),
-            updatedAt: new Date('2026-01-06 14:07:38'),
         },
         {
-            id: 5,
             symbol: 'DXY',
             baseAsset: 'DXY',
             quoteAsset: 'INDEX',
             decimalPlaces: 3,
-            createdAt: new Date('2026-01-06 14:07:38'),
-            updatedAt: new Date('2026-01-06 14:07:38'),
         },
     ];
 
