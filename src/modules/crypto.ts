@@ -3,6 +3,7 @@ const path = require('path')
 const privateKEY = fs.readFileSync(path.join(process.cwd(), 'secrets', 'private.key'), 'utf8')
 const jwt = require('jsonwebtoken')
 const cryptoJS = require('crypto-js')
+import crypto from 'crypto'
 
 interface TokenOption {
 	algorithm?: string
@@ -36,4 +37,8 @@ export function sha256(pwd: string, salt: string): string {
 export function md5Encode(message: string): string {
 	var hash = cryptoJS.MD5(message)
 	return hash.toString(cryptoJS.enc.Hex)
+}
+
+export function generateHash(text: string): string {
+	return crypto.createHash('md5').update(text).digest('hex');
 }

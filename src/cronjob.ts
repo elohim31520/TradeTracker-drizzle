@@ -2,7 +2,7 @@ import { CronJob } from 'cron';
 import { crawlMarketPriceSnapshots } from './modules/crawler/priceSnapshots'
 import { crawlCompanyMetrics } from './modules/crawler/companyMetrics'
 import { crawlStockPrices } from './modules/crawler/stockPrices'
-// import { crawlTechNews } from './modules/crawler/technews'
+import { crawlTechNews } from './modules/crawler/technews'
 
 interface CronConfig {
     schedule: string;
@@ -42,10 +42,10 @@ if (process.env.NODE_ENV === 'production') {
 		mission: crawlStockPrices,
 	})
 
-	// createCronJob({
-	// 	schedule: '41 */6 * * *',
-	// 	mission: crawlTechNews,
-	// })
+	createCronJob({
+		schedule: '41 */6 * * *',
+		mission: crawlTechNews,
+	})
 } else {
 	createCronJob({
 		schedule: '0 15 * * *',
@@ -62,8 +62,8 @@ if (process.env.NODE_ENV === 'production') {
 		mission: crawlStockPrices,
 	})
 
-	// createCronJob({
-	// 	schedule: '41 * * * *',
-	// 	mission: crawlTechNews,
-	// })
+	createCronJob({
+		schedule: '41 * * * *',
+		mission: crawlTechNews,
+	})
 }
