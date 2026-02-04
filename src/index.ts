@@ -1,5 +1,5 @@
 import 'reflect-metadata'
-import express, { Request, Response } from 'express'
+import express from 'express'
 import { db } from './db/pg'
 import userRoutes from './routes/users'
 import tradeRoutes from './routes/trade'
@@ -9,6 +9,7 @@ import portfolios from './routes/portfolio'
 import stockRoutes from './routes/stock'
 import newsRoutes from './routes/news'
 import marketRoutes from './routes/market'
+import balanceRoutes from './routes/balances'
 import errorHandler from './middleware/errorHandler'
 import 'dotenv/config';
 import { startTradeWorker } from './workers/tradeWorker';
@@ -25,6 +26,7 @@ app.use('/portfolio', portfolios)
 app.use('/stock', stockRoutes)
 app.use('/news', newsRoutes)
 app.use('/market', marketRoutes)
+app.use('/balance', balanceRoutes)
 
 app.use(errorHandler)
 
