@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, integer, numeric, timestamp, pgEnum, uuid, bigserial, index, date, decimal, uniqueIndex, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, integer, numeric, timestamp, pgEnum, uuid, bigint, index, date, decimal, uniqueIndex, boolean, unique } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
 import { relations } from 'drizzle-orm';
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'paid', 'shipped', 'completed', 'cancelled']);
@@ -23,11 +23,13 @@ export const admins = pgTable('admins', {
   updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
 });
 
-export const usersRelations = relations(users, ({ one }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   admin: one(admins, {
     fields: [users.id],
     references: [admins.userId],
   }),
+  balances: many(userBalances),
+  logs: many(userBalanceLogs),
 }));
 
 export const adminsRelations = relations(admins, ({ one }) => ({
@@ -73,7 +75,7 @@ export const companies = pgTable('companies', {
 
 // 交易表
 export const stockTrades = pgTable('stock_trades', {
-  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
   userId: uuid('user_id').references(() => users.id).notNull(),
   companyId: integer('company_id').notNull().references(() => companies.id),
   tradeType: stockTradeTypeEnum('trade_type').notNull(),
@@ -217,3 +219,52 @@ export const news = pgTable('news', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
 });
+
+// --- 餘額表 ---
+export const userBalances = pgTable('user_balances', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  balance: numeric('balance', { precision: 15, scale: 2 }).notNull().default('0.00'),
+  currency: varchar('currency', { length: 10 }).notNull().default('USD'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userCurrencyUnique: unique('user_currency_unique').on(table.userId, table.currency),
+  userIdIdx: index('idx_user_balances_user_id').on(table.userId),
+}));
+
+// --- 流水帳表 ---
+export const userBalanceLogs = pgTable('user_balance_logs', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+
+  currency: varchar('currency', { length: 10 }).notNull(),
+  amount: numeric('amount', { precision: 15, scale: 2 }).notNull(),
+  balanceBefore: numeric('balance_before', { precision: 15, scale: 2 }).notNull(),
+  balanceAfter: numeric('balance_after', { precision: 15, scale: 2 }).notNull(),
+  type: varchar('type', { length: 50 }).notNull(),
+  referenceId: varchar('reference_id', { length: 100 }),
+  remark: text('remark'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index('idx_balance_logs_user_id').on(table.userId),
+  refIdIdx: index('idx_balance_logs_ref_id').on(table.referenceId),
+}));
+
+export const userBalancesRelations = relations(userBalances, ({ one }) => ({
+  user: one(users, {
+    fields: [userBalances.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userBalanceLogsRelations = relations(userBalanceLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [userBalanceLogs.userId],
+    references: [users.id],
+  }),
+}));
