@@ -36,9 +36,12 @@ if (process.env.NODE_ENV === 'production') {
 		mission: crawlMarketPriceSnapshots,
 	})
 
-	// // 早上更新 stock prices，原因是爬蟲的網站可能是美東晚上才更新
+	/**
+	 * 早上更新 stock prices，原因是爬蟲的網站可能是美東晚上才更新
+	 * 週日周一不取 因為周末休市
+	 */
 	createCronJob({
-		schedule: '0 10 * * *',
+		schedule: '0 10 * * 2-6',
 		mission: crawlStockPrices,
 	})
 
