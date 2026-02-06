@@ -12,7 +12,7 @@ const router = express.Router()
 
 const momentumRangeCacheCondition = (req: Request) => {
 	const days = parseInt(req.params.days as string, 10)
-	return [3, 7, 30, 60].includes(days)
+	return [7, 30, 60].includes(days)
 }
 
 // 路由應由最具體到最通用排序，以避免動態路由攔截靜態路由
