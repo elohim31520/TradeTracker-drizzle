@@ -179,7 +179,7 @@ class MarketPriceSnapshotsService {
               to_char(ps.created_at, 'YYYY-MM-DD HH24') AS "hourGroup",
               ROW_NUMBER() OVER (
                 PARTITION BY ps.asset_id, to_char(ps.created_at, 'YYYY-MM-DD HH24')
-                ORDER BY ps.change DESC
+                ORDER BY ABS(ps.change) DESC
               ) as rn
             FROM
               price_snapshots ps
