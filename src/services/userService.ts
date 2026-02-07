@@ -104,18 +104,16 @@ class userService {
 
 		const payload = ticket.getPayload();
 
-		if (!payload) throw new ClientError('無效的 token payload')
-		if (!payload.sub || !payload.email) throw new ClientError('缺少必要的用戶資訊')
-
-		if (payload.aud !== process.env.GOOGLE_CLIENT_ID) {
-			throw new ClientError('token audience 不匹配!')
+		if (!payload) {
+			throw new ClientError('無法解析 Google 資料');
 		}
 
-		if (payload.iss !== 'https://accounts.google.com') {
-			throw new ClientError('issuer發行商 不匹配!')
-		}
+		const { sub: googleId, email, name, picture } = payload;
 
-		const { sub: googleId, email, name, picture } = payload
+		// 系統需要 email 和 sub 才能運作
+		if (!googleId || !email) {
+			throw new ClientError('Google 帳號資訊不足 (缺少 Email 或 ID)');
+		}
 
 		const existingAccount = await db.query.userThirdpartyAccounts.findFirst({
 			where: and(
