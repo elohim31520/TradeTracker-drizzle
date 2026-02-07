@@ -1,10 +1,13 @@
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { db } from '../db/pg'
-import { users } from '../db/schema'
+import { users, userThirdpartyAccounts } from '../db/schema'
 import { generateToken, generateSalt, sha256 } from '../modules/crypto'
-import { ClientError, ConflictError } from '../modules/errors'
+import { ClientError, ConflictError, ServerError } from '../modules/errors'
 import { USER_NOT_FOUND, PASSWORD_INCORRECT } from '../constant/userErrors'
 import bcrypt from 'bcrypt';
+import { OAuth2Client, TokenPayload } from 'google-auth-library'
+
+const googleOAuth = new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET)
 
 class userService {
 	private readonly SALT_ROUNDS = 10;
@@ -90,6 +93,94 @@ class userService {
 			.where(eq(users.id, userId));
 
 		return { message: '密碼更新成功' };
+	}
+
+
+	async handleGoogleCredential(credential: string) {
+		const ticket = await googleOAuth.verifyIdToken({
+			idToken: credential,
+			audience: process.env.GOOGLE_CLIENT_ID,
+		})
+
+		const payload = ticket.getPayload();
+
+		if (!payload) throw new ClientError('無效的 token payload')
+		if (!payload.sub || !payload.email) throw new ClientError('缺少必要的用戶資訊')
+
+		if (payload.aud !== process.env.GOOGLE_CLIENT_ID) {
+			throw new ClientError('token audience 不匹配!')
+		}
+
+		if (payload.iss !== 'https://accounts.google.com') {
+			throw new ClientError('issuer發行商 不匹配!')
+		}
+
+		const { sub: googleId, email, name, picture } = payload
+
+		const existingAccount = await db.query.userThirdpartyAccounts.findFirst({
+			where: and(
+				eq(userThirdpartyAccounts.provider, 'google'),
+				eq(userThirdpartyAccounts.providerUserId, googleId)
+			),
+			with: {
+				user: true,
+			},
+		});
+
+		let targetUser;
+
+		if (existingAccount) {
+			// A. 如果已存在，更新資訊
+			await db.update(userThirdpartyAccounts)
+				.set({ picture, name })
+				.where(eq(userThirdpartyAccounts.id, existingAccount.id));
+
+			targetUser = existingAccount.user;
+		} else {
+			// B. 如果不存在，使用 Transaction 處理「找/創使用者」與「綁定帳號」
+			targetUser = await db.transaction(async (tx) => {
+				// 檢查 User 表是否已存在該 Email
+				let localUser = await tx.query.users.findFirst({
+					where: eq(users.email, email),
+				});
+
+				if (!localUser) {
+					const [newUser] = await tx.insert(users)
+						.values({
+							name: name || `google_${googleId}`,
+							email,
+						})
+						.returning();
+					localUser = newUser;
+				}
+
+				// 創建外部帳號關聯
+				await tx.insert(userThirdpartyAccounts)
+					.values({
+						userId: localUser.id,
+						provider: 'google',
+						providerUserId: googleId,
+						picture,
+						name,
+					})
+					.onConflictDoUpdate({
+						target: [userThirdpartyAccounts.provider, userThirdpartyAccounts.providerUserId],
+						set: { picture, name }
+					});
+
+				return localUser;
+			});
+		}
+
+		if (!targetUser) {
+			throw new ServerError('無法創建或找到用戶');
+		}
+
+		return {
+			token: generateToken({ name: targetUser.name, id: targetUser.id, email: targetUser.email }),
+			picture,
+			name,
+		};
 	}
 }
 

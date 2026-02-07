@@ -10,7 +10,7 @@ const router: Router = express.Router()
 
 router.post('/register', validate(registerSchema), userController.create)
 router.post('/login', validate(loginSchema), userController.login)
-// router.post('/google/login', validate(googleLoginSchema), googleAuthController.googleLogin)
+router.post('/google/login', validate(googleLoginSchema), userController.googleLogin)
 router.post('/password', authMiddleware, validate(changePasswordSchema), userController.changePassword)
 router.get('/is-login', authMiddleware, (req, res) => {
 	res.json(success(true))

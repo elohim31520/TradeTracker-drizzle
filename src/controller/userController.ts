@@ -34,6 +34,12 @@ class UserController {
 
         res.json(success(result));
     }
+
+    async googleLogin(req: Request, res: Response) {
+        const { credential } = req.body
+        const result = await userService.handleGoogleCredential(credential)
+        res.json(success(result))
+    }
 }
 
 export default new UserController();
