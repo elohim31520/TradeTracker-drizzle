@@ -43,14 +43,14 @@ app.use(express.json({ type: ['application/json', 'application/json; charset=UTF
 app.use(helmet());
 
 app.use('/users', userRoutes)
-app.use('/trades', tradeRoutes)
-app.use('/admins', adminRoutes)
-app.use('/company-metrics', companyMetrics)
+app.use('/transactions', tradeRoutes)
+app.use('/admin', adminRoutes)
+app.use('/statements', companyMetrics)
 app.use('/portfolio', portfolios)
 app.use('/stock', stockRoutes)
 app.use('/news', newsRoutes)
 app.use('/market', marketRoutes)
-app.use('/balance', balanceRoutes)
+app.use('/balances', balanceRoutes)
 
 app.use(errorHandler)
 
