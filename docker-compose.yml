@@ -1,0 +1,94 @@
+services:
+  redis:
+    image: "redis:alpine"
+    container_name: redis
+    networks:
+      - app-network
+    volumes:
+      - redis-data:/data
+
+  app:
+    build: .
+    image: ur-trade-app
+    container_name: ur-trade-app
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - REDIS_URL=${REDIS_URL}
+      - PG_URL=postgres://postgres:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - NGINX_HOST=${NGINX_HOST}
+      - NGINX_PORT=${NGINX_PORT}
+      - PORT=${PORT}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+    networks:
+      - app-network
+    volumes:
+      - ./logs:/app/logs
+      - ./secrets:/app/secrets
+    command: node ./dist/app.js
+
+  cron:
+    image: ur-trade-app
+    container_name: ur-trade-cron
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - REDIS_URL=${REDIS_URL}
+      - PG_URL=postgres://postgres:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - SP500_URL=${SP500_URL}
+      - MARKET_URL=${MARKET_URL}
+      - STOCK_PRICES_URL=${STOCK_PRICES_URL}
+      - TECHNEWS_URL=${TECHNEWS_URL}
+      - PORT=${PORT}
+    networks:
+      - app-network
+    volumes:
+      - ./logs:/app/logs
+      - ./secrets:/app/secrets
+    command: node ./dist/cronjob.js
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: my-postgres
+    restart: always
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  certbot-etc:
+  certbot-var:
+  redis-data: {}
+  postgres-data: {}
