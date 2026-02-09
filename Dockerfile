@@ -27,6 +27,8 @@
     
     # 從 builder 階段複製編譯後的程式碼
     COPY --from=builder /app/dist ./dist
+    COPY --from=builder /app/drizzle ./drizzle
+    COPY --from=builder /app/drizzle.config.ts ./
     
     # 修正路徑：從 builder 複製 drizzle 資料夾到運行目錄
     COPY --from=builder /app/drizzle ./drizzle
