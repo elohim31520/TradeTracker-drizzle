@@ -1,4 +1,3 @@
-CREATE TYPE "public"."order_status" AS ENUM('pending', 'paid', 'shipped', 'completed', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."status" AS ENUM('draft', 'published', 'archived');--> statement-breakpoint
 CREATE TYPE "public"."stock_trade_type" AS ENUM('buy', 'sell');--> statement-breakpoint
 CREATE TABLE "admins" (

@@ -1,7 +1,6 @@
 import { pgTable, serial, text, varchar, integer, numeric, timestamp, pgEnum, uuid, bigint, index, date, decimal, uniqueIndex, boolean, unique } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
 import { relations } from 'drizzle-orm';
-export const orderStatusEnum = pgEnum('order_status', ['pending', 'paid', 'shipped', 'completed', 'cancelled']);
 
 // 使用者表
 export const users = pgTable('users', {

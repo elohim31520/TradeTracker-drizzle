@@ -1,5 +1,5 @@
 {
-  "id": "44e1eb4b-6691-4a41-8569-5bb915bc537a",
+  "id": "7eb5dbda-7a53-4beb-aeda-4aa089efe431",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1194,17 +1194,6 @@
     }
   },
   "enums": {
-    "public.order_status": {
-      "name": "order_status",
-      "schema": "public",
-      "values": [
-        "pending",
-        "paid",
-        "shipped",
-        "completed",
-        "cancelled"
-      ]
-    },
     "public.status": {
       "name": "status",
       "schema": "public",
