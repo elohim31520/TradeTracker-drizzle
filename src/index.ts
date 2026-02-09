@@ -15,9 +15,30 @@ import 'dotenv/config';
 import { startTradeWorker } from './workers/tradeWorker';
 import { connectRedis } from './modules/redis';
 import helmet from 'helmet'
+import cors from 'cors'
+import logger from './modules/logger'
 
 const app = express()
 const port = Number(process.env.PORT)
+
+logger.info(`CORS_ORIGIN environment variable is: ${process.env.CORS_ORIGIN}`)
+
+const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : []
+
+app.use(
+	cors({
+		origin: (origin, callback) => {
+			if (!origin || allowedOrigins.includes(origin)) {
+				callback(null, true)
+			} else {
+				logger.warn(`CORS blocked for origin: ${origin}`)
+				callback(new Error('Not allowed by CORS'))
+			}
+		},
+		optionsSuccessStatus: 200,
+		maxAge: 86400,
+	})
+)
 app.use(express.json({ type: ['application/json', 'application/json; charset=UTF-8'] }))
 app.use(helmet());
 
