@@ -26,8 +26,9 @@ function createCronJob({ schedule, mission }: CronConfig): CronJob {
 }
 
 if (process.env.NODE_ENV === 'production') {
+	// 週日周一不取 因為周末休市，eps fpe 數值不會變
 	createCronJob({
-		schedule: '0 15 * * *',
+		schedule: '0 15 * * 2-6',
 		mission: crawlCompanyMetrics,
 	})
 
