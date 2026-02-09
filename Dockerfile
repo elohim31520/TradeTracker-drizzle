@@ -32,7 +32,6 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/migrations ./migrations
 # 如果你在運行時需要用到 schema 定義（例如某些動態需求），則需要確保它包含在 dist 內
 
-COPY config ./config
 COPY generateKeyPairSync.js ./
 COPY entrypoint.sh ./
 
