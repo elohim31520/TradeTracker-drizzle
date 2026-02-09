@@ -47,6 +47,7 @@
     "jsonwebtoken": "^9.0.3",
     "lodash": "^4.17.21",
     "postgres": "^3.4.8",
+    "rate-limiter-flexible": "^9.1.1",
     "redis": "^5.10.0",
     "reflect-metadata": "^0.2.2",
     "uuidv7": "^1.1.0",
