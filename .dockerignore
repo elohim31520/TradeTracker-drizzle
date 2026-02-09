@@ -1,6 +1,35 @@
+# 1. 核心排除
 .git
 node_modules
 Dockerfile
 .dockerignore
-log
+
+# 2. 測試與開發相關
+tests/
+__tests__/
+jest.config.js
+vitest.config.ts
+cypress/
+.eslintrc*
+.prettierrc*
+
+# 3. 本機產生的記錄與暫存
+log/
+*.log
+npm-debug.log*
+.npm/
+.cache/
+
+# 4. 敏感資訊
+.env
+.env.local
+.env.production
 backup/
+
+# 5. IDE 產生的垃圾
+.vscode/
+.idea/
+.DS_Store
+
+
+dist/
