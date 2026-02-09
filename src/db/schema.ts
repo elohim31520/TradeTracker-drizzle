@@ -52,7 +52,9 @@ export const userThirdpartyAccounts = pgTable('user_thirdparty_accounts', {
   name: text('name'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
-});
+}, (t) => ({
+  unq: unique().on(t.provider, t.providerUserId),
+}));
 
 export const userThirdpartyAccountsRelations = relations(userThirdpartyAccounts, ({ one }) => ({
   user: one(users, {

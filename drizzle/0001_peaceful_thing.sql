@@ -1,0 +1,1 @@
+ALTER TABLE "user_thirdparty_accounts" ADD CONSTRAINT "user_thirdparty_accounts_provider_provider_user_id_unique" UNIQUE("provider","provider_user_id");
