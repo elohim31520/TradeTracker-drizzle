@@ -1,10 +1,11 @@
 import amqp from 'amqplib';
 import type { Connection, Channel } from 'amqplib';
+import 'dotenv/config';
 
 class RabbitMQManager {
     private static instance: RabbitMQManager;
     private connection: Connection | null = null;
-    private readonly url: string = 'amqp://localhost';
+    private readonly url: string = process.env.RABBITMQ_URL!;
     private isConnecting: boolean = false;
     private retryCount: number = 0;
     private channels: Map<string, Channel> = new Map();

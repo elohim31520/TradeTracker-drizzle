@@ -1,4 +1,20 @@
 services:
+  # --- 訊息隊列 (RabbitMQ) ---
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBIT_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - app-network
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
   redis:
     image: "redis:alpine"
     container_name: redis
@@ -14,15 +30,15 @@ services:
     depends_on:
       - redis
       - postgres
+      - rabbitmq
     environment:
       - NODE_ENV=${NODE_ENV}
       - CORS_ORIGIN=${CORS_ORIGIN}
       - REDIS_URL=${REDIS_URL}
       - PG_URL=postgres://postgres:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBIT_PASSWORD}@rabbitmq:5672
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
-      - NGINX_HOST=${NGINX_HOST}
-      - NGINX_PORT=${NGINX_PORT}
       - PORT=${PORT}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
@@ -41,16 +57,9 @@ services:
       - postgres
     environment:
       - NODE_ENV=${NODE_ENV}
-      - CORS_ORIGIN=${CORS_ORIGIN}
-      - REDIS_URL=${REDIS_URL}
       - PG_URL=postgres://postgres:${DB_PASSWORD}@postgres:5432/${DB_NAME}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
       - SP500_URL=${SP500_URL}
       - MARKET_URL=${MARKET_URL}
-      - STOCK_PRICES_URL=${STOCK_PRICES_URL}
-      - TECHNEWS_URL=${TECHNEWS_URL}
-      - PORT=${PORT}
     networks:
       - app-network
     volumes:
@@ -92,3 +101,4 @@ volumes:
   certbot-var:
   redis-data: {}
   postgres-data: {}
+  rabbitmq-data: {}
