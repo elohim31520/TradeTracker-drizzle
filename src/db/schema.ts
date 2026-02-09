@@ -125,7 +125,6 @@ export const companyMetrics = pgTable('company_metrics', {
   volume: integer('volume'),
   marketCap: varchar('market_cap', { length: 32 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()),
 });
 
 export const companyMetricsRelations = relations(companyMetrics, ({ one }) => ({
