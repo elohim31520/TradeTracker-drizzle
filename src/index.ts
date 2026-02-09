@@ -69,8 +69,8 @@ async function bootstrap() {
 		startTradeWorker();
 
 		console.log('🔧 正在啟動 HTTP 伺服器...')
-		server = app.listen(port, 'localhost', () => {
-			console.log(`🚀 Server is running at http://localhost:${port}`)
+		server = app.listen(port, () => {
+			console.log(`🚀 Server is running at ${port}`)
 		})
 
 		server.on('error', (error: any) => {
