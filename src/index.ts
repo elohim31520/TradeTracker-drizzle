@@ -14,10 +14,12 @@ import errorHandler from './middleware/errorHandler'
 import 'dotenv/config';
 import { startTradeWorker } from './workers/tradeWorker';
 import { connectRedis } from './modules/redis';
+import helmet from 'helmet'
 
 const app = express()
 const port = Number(process.env.PORT)
 app.use(express.json({ type: ['application/json', 'application/json; charset=UTF-8'] }))
+app.use(helmet());
 
 app.use('/users', userRoutes)
 app.use('/trades', tradeRoutes)
