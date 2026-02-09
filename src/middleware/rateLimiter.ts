@@ -24,7 +24,7 @@ let rateLimiter: RateLimiterRedis | RateLimiterMemory | null = null
 // 初始化工廠函數
 const createLimiter = (): RateLimiterRedis | RateLimiterMemory => {
 	// 檢查 Redis 是否連線 (兼容 node-redis v4 的 isOpen 或 v3 的 connected)
-	const isRedisReady = redisClient && (redisClient.isOpen || redisClient.connected || redisClient.isReady)
+	const isRedisReady = redisClient && redisClient.isOpen
 
 	if (isRedisReady) {
 		logger.info(`[RateLimiter] 使用 Redis 模式 (Limit: ${LIMIT_POINTS}/${LIMIT_DURATION}s)`)
