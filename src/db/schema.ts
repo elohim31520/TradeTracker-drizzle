@@ -203,7 +203,7 @@ export const portfolios = pgTable(
   ]
 );
 
-export const statusEnum = pgEnum('status', ['draft', 'published', 'archived']);
+export const statusEnum = pgEnum('news_status', ['draft', 'published', 'archived']);
 
 export const news = pgTable('news', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
