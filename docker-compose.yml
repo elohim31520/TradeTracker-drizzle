@@ -47,7 +47,7 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./secrets:/app/secrets
-    command: node ./dist/app.js
+    command: node ./dist/index.js
 
   cron:
     image: ur-trade-app
