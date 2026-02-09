@@ -1,4 +1,4 @@
-CREATE TYPE "public"."status" AS ENUM('draft', 'published', 'archived');--> statement-breakpoint
+CREATE TYPE "public"."news_status" AS ENUM('draft', 'published', 'archived');--> statement-breakpoint
 CREATE TYPE "public"."stock_trade_type" AS ENUM('buy', 'sell');--> statement-breakpoint
 CREATE TABLE "admins" (
 	"id" uuid PRIMARY KEY NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE "news" (
 	"content" text NOT NULL,
 	"content_en" text,
 	"content_hash" varchar(32) NOT NULL,
-	"status" "status" DEFAULT 'draft' NOT NULL,
+	"status" "news_status" DEFAULT 'draft' NOT NULL,
 	"published_at" timestamp,
 	"view_count" integer DEFAULT 0 NOT NULL,
 	"is_top" boolean DEFAULT false NOT NULL,

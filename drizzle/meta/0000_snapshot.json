@@ -1,5 +1,5 @@
 {
-  "id": "7eb5dbda-7a53-4beb-aeda-4aa089efe431",
+  "id": "152ac9c4-ffbd-4c2f-b7ac-fdb3653fe99b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -338,7 +338,7 @@
         },
         "status": {
           "name": "status",
-          "type": "status",
+          "type": "news_status",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
@@ -1194,8 +1194,8 @@
     }
   },
   "enums": {
-    "public.status": {
-      "name": "status",
+    "public.news_status": {
+      "name": "news_status",
       "schema": "public",
       "values": [
         "draft",
