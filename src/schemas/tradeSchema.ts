@@ -18,4 +18,13 @@ const bulkCreateSchema = Joi.array().items(createSchema).min(1).messages({
 	'array.min': '批量創建陣列中至少需要一個項目',
 })
 
-export { createSchema, getAllSchema, bulkCreateSchema }
+const imageUploadSchema = Joi.object({
+	fieldname: Joi.string().required(),
+	originalname: Joi.string().required(),
+	encoding: Joi.string().required(),
+	mimetype: Joi.string().valid('image/jpeg', 'image/png', 'image/webp').required(),
+	size: Joi.number().max(5 * 1024 * 1024).required(), // 限制 5MB
+	buffer: Joi.any().required()
+}).unknown(); // 允許其他 Multer 產生的欄位
+
+export { createSchema, getAllSchema, bulkCreateSchema, imageUploadSchema }
