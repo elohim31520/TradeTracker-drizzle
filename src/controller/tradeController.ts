@@ -99,62 +99,16 @@ class TradeController {
 
 	async handleTradeExtraction(req: Request, res: Response, next: NextFunction) {
 		try {
-			const prompt = `
-				請分析圖片中的交易紀錄，並將其中文字轉換為以下 JSON 陣列格式 createSchema[]。
+			if (!req.imagePart) throw new ClientError('找不到圖片資料');
 
-				const createSchema = Joi.object({
-					companyId: Joi.number().required(),
-					tradeType: Joi.string().valid('buy', 'sell').required(),
-					quantity: Joi.number().integer().positive().required(),
-					price: Joi.number().precision(2).positive().required(),
-					tradeDate: Joi.date().iso().required(),
-				})
-
-				上述是拿JOI驗證的格式給你參考，到時候API接收的資料屬性就是長這樣
-				最終幫我拼湊出完整的 createSchema[]
-				如果沒資料返回[]
-			。`
-
-			if (!req.imagePart) {
-				throw new Error('找不到圖片資料');
-			}
-
-			const result = await geminiModel.generateContent({
-				contents: [{
-					role: 'user',
-					parts: [
-						{ text: prompt },
-						req.imagePart
-					]
-				}]
+			await rabbitMQ.publish('ai_exchange', 'ai.extract.trade', {
+				imagePart: req.imagePart,
+				userId: req.user!.id,
 			});
 
-			const response = result.response;
-			const candidate = response.candidates?.[0];
-			const part = candidate?.content?.parts?.[0];
-
-			if (!part || !part.text) {
-				throw new Error('AI 未能產生有效的文字內容');
-			}
-
-			// 避免 AI 偶爾回傳非 JSON 字串
-			let extractedData;
-			try {
-				// 更穩健的寫法（清除整個 code block 包裝）
-				extractedData = JSON.parse(part.text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim());
-			} catch (e) {
-				throw new Error('AI 回傳格式錯誤，無法解析 JSON');
-			}
-
-			if (!Array.isArray(extractedData)) extractedData = [extractedData];
-			if (!extractedData.length) {
-				throw new ServerError('AI 回傳格式錯誤，無法解析 JSON，請確保截圖裡的文字正確');
-			}
-
-			req.body = extractedData
-			next();
-		} catch (err) {
-			next(err);
+			res.status(202).json(success({ message: 'AI 解析處理中' }));
+		} catch (error) {
+			next(error);
 		}
 	}
 }

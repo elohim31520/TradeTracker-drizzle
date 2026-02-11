@@ -13,6 +13,7 @@ import balanceRoutes from './routes/balances'
 import errorHandler from './middleware/errorHandler'
 import 'dotenv/config';
 import { startTradeWorker } from './workers/tradeWorker';
+import { startAiWorker } from './workers/aiWorker '
 import { connectRedis } from './modules/redis';
 import helmet from 'helmet'
 import cors from 'cors'
@@ -66,7 +67,8 @@ async function bootstrap() {
 		console.log('📊 資料庫連線成功')
 
 		if (process.env.NODE_ENV == 'test') return
-		startTradeWorker();
+		await startTradeWorker();
+		await startAiWorker();
 
 		console.log('🔧 正在啟動 HTTP 伺服器...')
 		server = app.listen(port, () => {
