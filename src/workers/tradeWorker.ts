@@ -4,29 +4,42 @@ import tradeService from '../services/tradeService';
 import { portfolios } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 
-export const startTradeWorker = async () => {
-    const EXCHANGE_NAME = 'trade_exchange';
-    const QUEUE_NAME = 'trade_processing_queue';
+const EXCHANGE_NAME = 'trade_exchange';
+const QUEUE_NAME = 'trade_processing_queue';
+const TRADE_DLX_NAME = 'trade_dlx';
+const TRADE_DLQ_NAME = 'trade_dead_letter_queue';
 
-    // 獲取 channel
+export const startTradeWorker = async () => {
     const channel = await rabbitMQ.getOrCreateChannel(`consumer-${QUEUE_NAME}`);
 
-    // 1. 確保 Exchange 存在
+    // 1. 確保 Dead Letter Exchange/Queue 存在
+    await channel.assertExchange(TRADE_DLX_NAME, 'direct', { durable: true });
+    await channel.assertQueue(TRADE_DLQ_NAME, { durable: true });
+    await channel.bindQueue(TRADE_DLQ_NAME, TRADE_DLX_NAME, TRADE_DLQ_NAME);
+    console.log(`✅ Dead Letter Exchange/Queue ready: ${TRADE_DLX_NAME} → ${TRADE_DLQ_NAME}`);
+
+    // 2. 確保 Trade Exchange 存在
     await channel.assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
     console.log(`✅ Exchange created: ${EXCHANGE_NAME}`);
 
-    // 2. 確保 Queue 存在
-    await channel.assertQueue(QUEUE_NAME, { durable: true });
+    // 3. 確保 Queue 存在，失敗導向 DLX
+    await channel.assertQueue(QUEUE_NAME, {
+        durable: true,
+        arguments: {
+            'x-dead-letter-exchange': TRADE_DLX_NAME,
+            'x-dead-letter-routing-key': TRADE_DLQ_NAME,
+        },
+    });
     console.log(`✅ Queue created: ${QUEUE_NAME}`);
 
-    // 3. **關鍵！綁定 Queue 到 Exchange**
+    // 4. 綁定 Queue 到 Exchange
     await channel.bindQueue(QUEUE_NAME, EXCHANGE_NAME, 'trade.create.*');
     console.log(`✅ Queue bound to exchange with routing pattern: trade.create.*`);
 
-    // 4. 設置 prefetch
+    // 5. 設置 prefetch
     await channel.prefetch(1);
 
-    // 5. 開始消費
+    // 6. 開始消費
     console.log(`🔥 Consumer ready for queue: ${QUEUE_NAME}`);
 
     await channel.consume(QUEUE_NAME, async (msg) => {
@@ -34,22 +47,20 @@ export const startTradeWorker = async () => {
 
         try {
             const content = JSON.parse(msg.content.toString());
-            const routingKey = msg.fields.routingKey; // 可以從這裡判斷是 single 還是 bulk
-            
+            const routingKey = msg.fields.routingKey;
+
             console.log(`📨 Received message with routing key: ${routingKey}`);
-            
+
             let userId: string;
             let type: string;
             let payload: any;
 
             if (routingKey === 'trade.create.single') {
-                // 單筆交易
                 userId = content.userId;
                 type = 'SINGLE_CREATE';
                 payload = content;
             } else if (routingKey === 'trade.create.bulk') {
-                // 批量交易
-                userId = content[0]?.userId; // 假設所有交易都是同一個用戶
+                userId = content[0]?.userId;
                 type = 'BULK_CREATE';
                 payload = content;
             } else {
@@ -95,7 +106,7 @@ export const startTradeWorker = async () => {
                     // 計算新的數量與成本
                     const currentQty = Number(portfolio.quantity);
                     const currentAvgPrice = Number(portfolio.averagePrice);
-                    
+
                     let newQty: number;
                     let newAvgPrice: number = currentAvgPrice;
 
@@ -125,9 +136,11 @@ export const startTradeWorker = async () => {
 
             console.log(`✅ [Worker] Processed ${type} for user ${userId}`);
             channel.ack(msg);
+
         } catch (error) {
+            // DB 寫入失敗或資料問題，不重試，直接進 trade_dead_letter_queue
             console.error(`❌ [Worker] Error:`, error);
-            channel.nack(msg, false, true); // 拒絕並重新排隊
+            channel.nack(msg, false, false);
         }
     }, { noAck: false });
 };
