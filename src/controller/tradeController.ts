@@ -1,7 +1,7 @@
 import tradeService from '../services/tradeService'
 import { success, fail } from '../modules/responseHelper'
 import { Request, Response, NextFunction } from 'express'
-import { ClientError } from '../modules/errors'
+import { ClientError, ServerError } from '../modules/errors'
 import { rabbitMQ } from '../modules/rabbitMQManager'
 import { geminiModel } from '../modules/vertexAi';
 
@@ -112,6 +112,7 @@ class TradeController {
 
 				上述是拿JOI驗證的格式給你參考，到時候API接收的資料屬性就是長這樣
 				最終幫我拼湊出完整的 createSchema[]
+				如果沒資料返回[]
 			。`
 
 			if (!req.imagePart) {
@@ -146,6 +147,9 @@ class TradeController {
 			}
 
 			if (!Array.isArray(extractedData)) extractedData = [extractedData];
+			if (!extractedData.length) {
+				throw new ServerError('AI 回傳格式錯誤，無法解析 JSON，請確保截圖裡的文字正確');
+			}
 
 			req.body = extractedData
 			next();
