@@ -1,9 +1,9 @@
 import tradeService from '../services/tradeService'
-import { success, fail } from '../modules/responseHelper'
+import { success } from '../modules/responseHelper'
 import { Request, Response, NextFunction } from 'express'
-import { ClientError, ServerError } from '../modules/errors'
+import { ClientError } from '../modules/errors'
 import { rabbitMQ } from '../modules/rabbitMQManager'
-import { geminiModel } from '../modules/vertexAi';
+import redisClient from '../modules/redis';
 
 class TradeController {
 	async create(req: Request, res: Response, next: NextFunction) {
@@ -101,12 +101,30 @@ class TradeController {
 		try {
 			if (!req.imagePart) throw new ClientError('找不到圖片資料');
 
+			const jobId = crypto.randomUUID();
+
 			await rabbitMQ.publish('ai_exchange', 'ai.extract.trade', {
 				imagePart: req.imagePart,
 				userId: req.user!.id,
+				jobId
 			});
 
-			res.status(202).json(success({ message: 'AI 解析處理中' }));
+			res.status(202).json(success({ jobId, message: 'AI 解析處理中' }));
+		} catch (error) {
+			next(error);
+		}
+	}
+
+	async getAIJobStatus(req: Request, res: Response, next: NextFunction) {
+		try {
+			const { jobId } = req.params;
+			const data = await redisClient.get(`ai:trade:extraction:${jobId}`);
+
+			if (!data) {
+				throw new ClientError('找不到此任務或任務已過期');
+			}
+
+			res.json(success(JSON.parse(data)));
 		} catch (error) {
 			next(error);
 		}

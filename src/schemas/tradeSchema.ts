@@ -27,4 +27,8 @@ const imageUploadSchema = Joi.object({
 	buffer: Joi.any().required()
 }).unknown(); // 允許其他 Multer 產生的欄位
 
-export { createSchema, getAllSchema, bulkCreateSchema, imageUploadSchema }
+const aiJobSchema = Joi.object({
+	jobId: Joi.string().uuid().required(),
+})
+
+export { createSchema, getAllSchema, bulkCreateSchema, imageUploadSchema, aiJobSchema }

@@ -2,7 +2,7 @@ import express from 'express'
 import tradeController from '../controller/tradeController'
 import { authMiddleware } from '../middleware/auth'
 import validate from '../middleware/validate'
-import { createSchema, getAllSchema, bulkCreateSchema, imageUploadSchema } from '../schemas/tradeSchema'
+import { createSchema, getAllSchema, bulkCreateSchema, imageUploadSchema, aiJobSchema } from '../schemas/tradeSchema'
 import { uploadToGCS } from '../middleware/uploadToStorage';
 import multer from 'multer';
 
@@ -31,5 +31,7 @@ router.post(
     validate(bulkCreateSchema),
     tradeController.bulkCreate
 );
+
+router.get('/ai-job/:jobId', validate(aiJobSchema, 'params'), tradeController.getAIJobStatus)
 
 export default router

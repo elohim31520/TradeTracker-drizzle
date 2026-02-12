@@ -2,6 +2,7 @@ import { rabbitMQ } from '../modules/rabbitMQManager';
 import { geminiModel } from '../modules/vertexAi';
 import { ServerError } from '../modules/errors';
 import { bulkCreateSchema } from '../schemas/tradeSchema'
+import redisClient from '../modules/redis';
 
 const AI_EXCHANGE_NAME = 'ai_exchange';
 const AI_QUEUE_NAME = 'ai_processing_queue';
@@ -44,6 +45,17 @@ const parseGeminiResponse = (text: string): any[] => {
     return extractedData;
 };
 
+const updateJobStatus = async (jobId: string, status: 'success' | 'failed', message?: string) => {
+    try {
+        await redisClient.set(`ai:trade:extraction:${jobId}`, JSON.stringify({
+            status,
+            ...(message && { message }),
+        }), { EX: 300 });
+    } catch (err) {
+        console.error(`Failed to update job status for ${jobId}:`, err);
+    }
+};
+
 export const startAiWorker = async () => {
     const channel = await rabbitMQ.getOrCreateChannel(`consumer-${AI_QUEUE_NAME}`);
 
@@ -80,7 +92,7 @@ export const startAiWorker = async () => {
     await channel.consume(AI_QUEUE_NAME, async (msg) => {
         if (!msg) return;
 
-        const { imagePart, userId } = JSON.parse(msg.content.toString());
+        const { imagePart, userId, jobId } = JSON.parse(msg.content.toString());
 
         console.log(`📨 [AI Worker] Received extraction request for user: ${userId}`);
 
@@ -110,6 +122,7 @@ export const startAiWorker = async () => {
             if (error) {
                 // AI 解析出來的資料格式不對，重試也沒用，直接放棄這筆
                 console.warn(`⚠️ [AI Worker] Validation failed for user: ${userId}`, error.details);
+                await updateJobStatus(jobId, 'failed', 'AI 解析的資料格式不正確，請確保截圖清晰');
                 channel.ack(msg); // ack 掉，不進 DLQ
                 return;
             }
@@ -120,11 +133,13 @@ export const startAiWorker = async () => {
             );
 
             console.log(`✅ [AI Worker] Extraction success for user: ${userId}, ${extractedData.length} trades queued`);
+            await updateJobStatus(jobId, 'success');
             channel.ack(msg);
 
         } catch (error) {
             // AI 相關失敗不重試，直接進 DLQ，避免無限 loop
             console.error(`❌ [AI Worker] Extraction failed for user: ${userId}`, error);
+            await updateJobStatus(jobId, 'failed', 'AI 服務暫時無法使用，請稍後再試');
             channel.nack(msg, false, false);
         }
     }, { noAck: false });
