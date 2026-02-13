@@ -55,7 +55,7 @@ fi
 
 # --- 5. 上傳至 GCS ---
 echo "☁️ 正在上傳至 $GCS_BUCKET ..."
-/usr/bin/gsutil cp "$BACKUP_DIR/$FILE_NAME" "$GCS_BUCKET/"
+/snap/bin/gsutil cp "$BACKUP_DIR/$FILE_NAME" "$GCS_BUCKET/"
 
 if [ $? -eq 0 ]; then
     echo "🚀 GCS 上傳成功！"
