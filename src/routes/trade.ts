@@ -28,8 +28,6 @@ router.post(
     validate(imageUploadSchema, 'file'),
     uploadToGCS,
     tradeController.handleTradeExtraction,
-    validate(bulkCreateSchema),
-    tradeController.bulkCreate
 );
 
 router.get('/ai-job/:jobId', validate(aiJobSchema, 'params'), tradeController.getAIJobStatus)
