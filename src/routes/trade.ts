@@ -5,6 +5,7 @@ import validate from '../middleware/validate'
 import { createSchema, getAllSchema, bulkCreateSchema, imageUploadSchema, aiJobSchema } from '../schemas/tradeSchema'
 import { uploadToGCS } from '../middleware/uploadToStorage';
 import multer from 'multer';
+import checkAiUsageLimit from '../middleware/aiUsageLimiter'
 
 const memUpload = multer({ storage: multer.memoryStorage() });
 
@@ -24,6 +25,7 @@ router.delete('/:id', tradeController.delete)                             // 刪
 // 上傳圖片，ai做辨識轉成寫入資料
 router.post(
     '/analyze-screenshot',
+    checkAiUsageLimit,
     memUpload.single('image'),
     validate(imageUploadSchema, 'file'),
     uploadToGCS,
