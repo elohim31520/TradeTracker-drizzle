@@ -6,11 +6,14 @@ import { createSchema, getAllSchema, bulkCreateSchema, imageUploadSchema, aiJobS
 import { uploadToGCS } from '../middleware/uploadToStorage';
 import multer from 'multer';
 import checkAiUsageLimit from '../middleware/aiUsageLimiter'
+import { uploader } from '../modules/gcsUploader'
+import { ClientError } from '../modules/errors'
+import { Request, Response, NextFunction } from 'express'
 
-const memUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024 } // 限制 5MB
-});
+// const memUpload = multer({
+//     storage: multer.memoryStorage(),
+//     limits: { fileSize: 5 * 1024 * 1024 } // 限制 5MB
+// });
 
 const router = express.Router()
 
@@ -26,12 +29,46 @@ router.put('/:id', tradeController.update)                                // 更
 router.delete('/:id', tradeController.delete)                             // 刪除交易記錄
 
 // 上傳圖片，ai做辨識轉成寫入資料
+// router.post(
+//     '/analyze-screenshot',
+//     checkAiUsageLimit,
+//     memUpload.single('image'),
+//     validate(imageUploadSchema, 'file'),
+//     uploadToGCS,
+//     tradeController.handleTradeExtraction,
+// );
+
+const convertGcsToImagePart = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const file = req.file as any;
+
+        if (!file) {
+            throw new ClientError('找不到圖片資料');
+        }
+
+        req.imagePart = {
+            fileData: {
+                fileUri: file.gcsUri,
+                mimeType: file.mimetype
+            }
+        };
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+// 改成直接stream到GCS，不經由vm memory
 router.post(
     '/analyze-screenshot',
     checkAiUsageLimit,
-    memUpload.single('image'),
-    validate(imageUploadSchema, 'file'),
-    uploadToGCS,
+    uploader.single('image'),
+    convertGcsToImagePart,
     tradeController.handleTradeExtraction,
 );
 
