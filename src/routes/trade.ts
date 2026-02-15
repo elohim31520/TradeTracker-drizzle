@@ -7,7 +7,10 @@ import { uploadToGCS } from '../middleware/uploadToStorage';
 import multer from 'multer';
 import checkAiUsageLimit from '../middleware/aiUsageLimiter'
 
-const memUpload = multer({ storage: multer.memoryStorage() });
+const memUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 } // 限制 5MB
+});
 
 const router = express.Router()
 
