@@ -1,17 +1,18 @@
 import { Storage } from '@google-cloud/storage';
 import { Request } from 'express';
 import multer from 'multer';
+import path from 'path';
+import { ClientError } from '../modules/errors'
 
 const storage = new Storage();
 const bucket = storage.bucket(process.env.GCS_BUCKET_NAME!);
 
-// 這就是現代的「自定義引擎」做法
 const gcsStorage = {
     _handleFile: (req: Request, file: Express.Multer.File, cb: (err?: any, info?: any) => void) => {
         const fileName = `${Date.now()}-${file.originalname}`;
         const gcsFile = bucket.file(fileName);
 
-        // 建立一個通往 GCS 的寫入流 (Write Stream)
+        // 建立通往 GCS 的 Write Stream
         const stream = gcsFile.createWriteStream({
             resumable: false, // 截圖小，關閉 resumable 效率更高
             contentType: file.mimetype,
@@ -40,5 +41,17 @@ const gcsStorage = {
 
 export const uploader = multer({
     storage: gcsStorage as any,
-    limits: { fileSize: 5 * 1024 * 1024 }
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+
+        const ext = path.extname(file.originalname).toLowerCase();
+
+        if (allowedMimeTypes.includes(file.mimetype) && allowedExtensions.includes(ext)) {
+            cb(null, true);
+        } else {
+            cb(new ClientError('無效的圖片格式'));
+        }
+    }
 });
