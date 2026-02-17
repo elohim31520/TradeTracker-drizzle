@@ -7,8 +7,8 @@ class PorfolioController {
 	async getAllByUserId(req: Request, res: Response, next: NextFunction): Promise<void> {
 		try {
 			const userId = req.user!.id
-			const transactions = await portfolioService.getAllByUserId(userId)
-			res.json(responseHelper.success(transactions))
+			const portfolios = await portfolioService.getAllByUserId(userId)
+			res.json(responseHelper.success(portfolios))
 		} catch (error: any) {
 			next(error)
 		}

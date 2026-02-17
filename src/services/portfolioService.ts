@@ -1,7 +1,6 @@
 import { db } from '../db/pg';
 import { portfolios, companies } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { getZonedDate } from '../modules/date';
 import { PortfolioWithCompany, NewPortfolio } from '../types/portfolio';
 
 class PortfolioService {
@@ -9,9 +8,12 @@ class PortfolioService {
 		const rows = await db
 			.select({
 				id: portfolios.id,
-				company_id: portfolios.companyId,
+				companyId: portfolios.companyId,
 				quantity: portfolios.quantity,
-				avg: portfolios.averagePrice,
+				averagePrice: portfolios.averagePrice,
+				userId: portfolios.userId,
+				createdAt: portfolios.createdAt,
+				updatedAt: portfolios.updatedAt,
 				company: {
 					name: companies.name,
 					symbol: companies.symbol,
@@ -23,54 +25,87 @@ class PortfolioService {
 
 		return rows.map((row) => ({
 			id: row.id,
-			company_id: row.company_id,
+			companyId: row.companyId,
 			quantity: row.quantity,
-			avg: row.avg,
-			stock_id: row.company?.symbol || '',
+			averagePrice: row.averagePrice,
+			userId: row.userId,
+			createdAt: row.createdAt,
+			updatedAt: row.updatedAt,
+			stockSymbol: row.company?.symbol || '',
 			company: row.company,
-		})) as unknown as PortfolioWithCompany[];
+		}));
 	}
 
 	async updateByUser(userId: string, data: NewPortfolio): Promise<void> {
-		if (!data.company_id) throw new Error('company_id is required for update');
+		if (!data.stockSymbol) throw new Error('stockSymbol is required for update');
 
-		const now = getZonedDate();
+		// 根据 stockSymbol 查找 companyId
+		const [company] = await db
+			.select({ id: companies.id })
+			.from(companies)
+			.where(eq(companies.symbol, data.stockSymbol))
+			.limit(1);
+
+		if (!company) {
+			throw new Error(`Company not found for stockSymbol: ${data.stockSymbol}`);
+		}
+
+		const updateData: Partial<{
+			quantity: string;
+			averagePrice: string;
+		}> = {};
+
+		if (data.quantity !== undefined) {
+			updateData.quantity = data.quantity.toString();
+		}
+		if (data.averagePrice !== undefined) {
+			updateData.averagePrice = data.averagePrice.toString();
+		}
 
 		const result = await db
 			.update(portfolios)
-			.set({
-				...data,
-			})
+			.set(updateData)
 			.where(
 				and(
 					eq(portfolios.userId, userId),
-					eq(portfolios.companyId, data.company_id)
+					eq(portfolios.companyId, company.id)
 				)
 			)
 			.returning({ id: portfolios.id });
 
 		if (result.length === 0) {
-			throw new Error(`Portfolio not found for userId: ${userId} and company_id ${data.company_id}`);
+			throw new Error(`Portfolio not found for userId: ${userId} and stockSymbol: ${data.stockSymbol}`);
 		}
 	}
 
 	async deleteByUser(userId: string, portfolioId: number): Promise<void> {
-		await db
+		const result = await db
 			.delete(portfolios)
-			.where(
-				and(
-					eq(portfolios.userId, userId),
-					eq(portfolios.id, portfolioId)
-				)
-			);
+			.where(and(eq(portfolios.userId, userId), eq(portfolios.id, portfolioId)))
+			.returning({ id: portfolios.id });
+
+		if (result.length === 0) {
+			throw new Error(`Portfolio not found for userId: ${userId} and portfolioId: ${portfolioId}`);
+		}
 	}
 
 	async createByUser(userId: string, data: NewPortfolio): Promise<void> {
+		// 根据 stockSymbol 查找 companyId
+		const [company] = await db
+			.select({ id: companies.id })
+			.from(companies)
+			.where(eq(companies.symbol, data.stockSymbol))
+			.limit(1);
+
+		if (!company) {
+			throw new Error(`Company not found for stockSymbol: ${data.stockSymbol}`);
+		}
+
 		await db.insert(portfolios).values({
 			userId: userId,
-			companyId: data.company_id!,
-			quantity: data.quantity || 0,
-			averagePrice: data.average_price || '0.00',
+			companyId: company.id,
+			quantity: (data.quantity || 0).toString(),
+			averagePrice: (data.averagePrice ?? 0).toFixed(2),
 		});
 	}
 }

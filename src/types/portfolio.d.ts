@@ -5,9 +5,21 @@ type Company = InferSelectModel<typeof companies>;
 
 export type Portfolio = InferSelectModel<typeof portfolios>;
 
-export type NewPortfolio = InferInsertModel<typeof portfolios>;
+export type NewPortfolioDB = InferInsertModel<typeof portfolios>;
+
+export interface NewPortfolio {
+    stockSymbol: string;
+    quantity?: number;
+    averagePrice?: number;
+}
+
+// 查询返回的 company 类型
+type CompanyInfo = {
+    name: string | null;
+    symbol: string | null;
+} | null;
 
 export interface PortfolioWithCompany extends Portfolio {
-    company?: Pick<Company, 'name' | 'symbol'> | null;
-    stock_id?: string;
+    company: CompanyInfo;
+    stockSymbol: string;
 }
