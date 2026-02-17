@@ -43,12 +43,12 @@ class TradeService {
 
 		const data: TradeWithCompany[] = trades.map((trade) => ({
 			id: trade.id,
-			company_id: trade.company_id,
+			companyId: trade.company_id,
 			quantity: trade.quantity,
 			price: trade.price,
 			type: trade.type,
 			date: trade.date,
-			stock_id: trade.company_symbol || '',
+			stockSymbol: trade.company_symbol || '',
 			company: trade.company_name && trade.company_symbol ? {
 				name: trade.company_name,
 				symbol: trade.company_symbol,

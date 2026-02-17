@@ -18,12 +18,12 @@ export interface GetAllTradesParams {
 // 用於返回的交易數據結構
 export interface TradeWithCompany {
   id: number;
-  company_id: number;
+  companyId: number;
   quantity: string; // 在 Node.js 和資料庫（如 PostgreSQL）的互動中，numeric 通常會被當作 string 處理。
   price: string;
   type: 'buy' | 'sell';
   date: string;
-  stock_id: string;
+  stockSymbol: string;
   company?: {
     name: string;
     symbol: string;
