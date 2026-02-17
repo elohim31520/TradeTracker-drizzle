@@ -51,6 +51,7 @@ services:
       - PORT=${PORT}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
     networks:
       - app-network
     volumes:
