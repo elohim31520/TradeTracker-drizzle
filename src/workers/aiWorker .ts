@@ -13,7 +13,7 @@ const PROMPT = `
     請分析圖片中的交易紀錄，並將其中文字轉換為以下 JSON 陣列格式 createSchema[]。
 
     const createSchema = Joi.object({
-        companyId: Joi.number().required(),
+        stockSymbol: Joi.string().required(),
         tradeType: Joi.string().valid('buy', 'sell').required(),
         quantity: Joi.number().integer().positive().required(),
         price: Joi.number().precision(2).positive().required(),

@@ -3,8 +3,6 @@ import tradeController from '../controller/tradeController'
 import { authMiddleware } from '../middleware/auth'
 import validate from '../middleware/validate'
 import { createSchema, getAllSchema, bulkCreateSchema, imageUploadSchema, aiJobSchema } from '../schemas/tradeSchema'
-import { uploadToGCS } from '../middleware/uploadToStorage';
-import multer from 'multer';
 import checkAiUsageLimit from '../middleware/aiUsageLimiter'
 import { uploader } from '../modules/gcsUploader'
 import { ClientError } from '../modules/errors'
@@ -21,12 +19,12 @@ const router = express.Router()
 router.use(authMiddleware)
 
 // 交易 CRUD 操作
-router.post('/', validate(createSchema), tradeController.create)           // 創建單筆交易
-router.post('/bulk', validate(bulkCreateSchema), tradeController.bulkCreate) // 批量創建交易
+router.post('/', validate(createSchema), tradeController.create)
+router.post('/bulk', validate(bulkCreateSchema), tradeController.bulkCreate)
 router.get('/', validate(getAllSchema, 'query'), tradeController.getAll)  // 獲取用戶的所有交易（分頁）
-router.get('/:id', tradeController.getById)                               // 獲取單筆交易詳情
-router.put('/:id', tradeController.update)                                // 更新交易記錄
-router.delete('/:id', tradeController.delete)                             // 刪除交易記錄
+router.get('/:id', tradeController.getById)
+router.put('/:id', tradeController.update)
+router.delete('/:id', tradeController.delete)
 
 // 上傳圖片，ai做辨識轉成寫入資料
 // router.post(

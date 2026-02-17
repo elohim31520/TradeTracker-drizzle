@@ -14,7 +14,7 @@ class TradeController {
 				userId,
 			};
 
-			await rabbitMQ.publish('trade_exchange', 'trade.create.single', tradeData);
+			await rabbitMQ.publish('trade_exchange', 'trade.create.bulk', [tradeData]);
 			res.status(202).json(success({ message: 'Trade processing started' }))
 
 		} catch (error) {

@@ -1,7 +1,7 @@
 import Joi from 'joi'
 
 const createSchema = Joi.object({
-	companyId: Joi.number().required(),
+	stockSymbol: Joi.string().required(),
 	tradeType: Joi.string().valid('buy', 'sell').required(),
 	quantity: Joi.number().integer().positive().required(),
 	price: Joi.number().precision(2).positive().required(),
