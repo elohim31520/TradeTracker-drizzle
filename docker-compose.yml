@@ -40,18 +40,11 @@ services:
       rabbitmq:
         condition: service_started
     restart: always
+    env_file:
+      - .env
     environment:
-      - NODE_ENV=${NODE_ENV}
-      - CORS_ORIGIN=${CORS_ORIGIN}
-      - REDIS_URL=${REDIS_URL}
       - PG_URL=postgres://postgres:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       - RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBIT_PASSWORD}@rabbitmq:5672
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - PORT=${PORT}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
     networks:
       - app-network
     volumes:
