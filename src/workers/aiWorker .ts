@@ -2,7 +2,7 @@ import { rabbitMQ } from '../modules/rabbitMQManager';
 import { geminiModel } from '../modules/vertexAi';
 import { ServerError } from '../modules/errors';
 import { bulkCreateSchema } from '../schemas/tradeSchema'
-import redisClient from '../modules/redis';
+import { updateJobStatus } from '../modules/util'
 
 const AI_EXCHANGE_NAME = 'ai_exchange';
 const AI_QUEUE_NAME = 'ai_processing_queue';
@@ -43,17 +43,6 @@ const parseGeminiResponse = (text: string): any[] => {
     }
 
     return extractedData;
-};
-
-const updateJobStatus = async (jobId: string, status: 'success' | 'failed', message?: string) => {
-    try {
-        await redisClient.set(`ai:trade:extraction:${jobId}`, JSON.stringify({
-            status,
-            ...(message && { message }),
-        }), { EX: 300 });
-    } catch (err) {
-        console.error(`Failed to update job status for ${jobId}:`, err);
-    }
 };
 
 export const startAiWorker = async () => {

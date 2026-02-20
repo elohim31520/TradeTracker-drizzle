@@ -2,6 +2,7 @@ const _ = require('lodash')
 const fs = require('fs')
 const path = require('path')
 import iconv from 'iconv-lite'
+import redisClient from '../modules/redis';
 
 export function generateRandomID(): string {
 	return Math.random().toString(36).slice(2)
@@ -34,3 +35,15 @@ export function decodeBuffer(buffer: Buffer | ArrayBuffer, encoding: string = 'u
 	const buf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer as ArrayBuffer);
 	return iconv.decode(buf, encoding);
 }
+
+
+export const updateJobStatus = async (jobId: string, status: 'success' | 'failed' | 'pending', message?: string) => {
+	try {
+		await redisClient.set(`ai:trade:extraction:${jobId}`, JSON.stringify({
+			status,
+			...(message && { message }),
+		}), { EX: 300 });
+	} catch (err) {
+		console.error(`Failed to update job status for ${jobId}:`, err);
+	}
+};

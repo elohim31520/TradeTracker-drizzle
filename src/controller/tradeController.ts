@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express'
 import { ClientError } from '../modules/errors'
 import { rabbitMQ } from '../modules/rabbitMQManager'
 import redisClient from '../modules/redis';
+import { updateJobStatus } from '../modules/util'
 
 class TradeController {
 	async create(req: Request, res: Response, next: NextFunction) {
@@ -102,6 +103,7 @@ class TradeController {
 			if (!req.imagePart) throw new ClientError('找不到圖片資料');
 
 			const jobId = crypto.randomUUID();
+			updateJobStatus(jobId, 'pending', 'AI working...')
 
 			await rabbitMQ.publish('ai_exchange', 'ai.extract.trade', {
 				imagePart: req.imagePart,
