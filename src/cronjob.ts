@@ -3,26 +3,27 @@ import { crawlMarketPriceSnapshots } from './modules/crawler/priceSnapshots'
 import { crawlCompanyMetrics } from './modules/crawler/companyMetrics'
 import { crawlStockPrices } from './modules/crawler/stockPrices'
 import { crawlTechNews } from './modules/crawler/technews'
+import { generateAndSaveNews } from './modules/aiNewsGenerator';
 
 interface CronConfig {
-    schedule: string;
-    mission: () => Promise<void> | void;
+	schedule: string;
+	mission: () => Promise<void> | void;
 }
 
 function createCronJob({ schedule, mission }: CronConfig): CronJob {
-    if (!schedule) {
-        throw new Error('Schedule is required');
-    }
-    
-    const job = new CronJob(
-        schedule, 
-        mission, 
-        null, 
-        true, 
-        'Asia/Taipei'
-    );
+	if (!schedule) {
+		throw new Error('Schedule is required');
+	}
 
-    return job;
+	const job = new CronJob(
+		schedule,
+		mission,
+		null,
+		true,
+		'Asia/Taipei'
+	);
+
+	return job;
 }
 
 if (process.env.NODE_ENV === 'production') {
@@ -50,6 +51,11 @@ if (process.env.NODE_ENV === 'production') {
 		schedule: '41 */6 * * *',
 		mission: crawlTechNews,
 	})
+
+	createCronJob({
+		schedule: '55 11 * * *',
+		mission: generateAndSaveNews,
+	})
 } else {
 	createCronJob({
 		schedule: '0 15 * * *',
@@ -69,5 +75,10 @@ if (process.env.NODE_ENV === 'production') {
 	createCronJob({
 		schedule: '41 * * * *',
 		mission: crawlTechNews,
+	})
+
+	createCronJob({
+		schedule: '24 10 * * *',
+		mission: generateAndSaveNews,
 	})
 }
