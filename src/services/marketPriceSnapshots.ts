@@ -82,10 +82,10 @@ class MarketPriceSnapshotsService {
             }
         });
 
-        // 2. 數據聚合
+        // 2. 數據聚合（額外保存原始價格，供高利率判斷使用）
         Object.entries(standardizedGroups).forEach(([symbol, items]) => {
             const key = getSafeKey(symbol);
-            items.forEach(({ createdAt, volume }) => {
+            items.forEach(({ createdAt, volume, price }) => {
                 if (!consolidatedData.has(createdAt)) {
                     // 初始化聚合點，動態產生所有 symbol 的預設值
                     const initialPoint: any = { createdAt };
@@ -93,48 +93,51 @@ class MarketPriceSnapshotsService {
                     consolidatedData.set(createdAt, initialPoint);
                 }
                 consolidatedData.get(createdAt)[key] = volume;
+                // 保存原始價格，供需要判斷實際數值的特殊邏輯使用
+                consolidatedData.get(createdAt)[`_rawPrice_${key}`] = Number(price);
             });
         });
 
         // 3. 動態權重計算 (以 BTC 為基準)
-        // 注意：這裡假設資料庫中一定存在 BTCUSD 作為錨點
+        // BTC 與自己的相關係數 = 1.0，自然取得最高權重，無需硬設底值
         const btcSymbol = 'BTCUSD';
         const btcItems = standardizedGroups[btcSymbol] || [];
         const btcV = btcItems.map(i => i.volume).slice(-MOVING_AVERAGE);
 
         if (btcV.length === 0) throw new Error("缺少基準資產 (BTCUSD) 數據無法計算權重");
 
-        const baseWeight = 0.1;
-
-        // 計算各個資產對 BTC 的權重
-        const weights: Record<string, number> = {};
+        // 3-1. 各資產原始相關係數
+        const rawCorrelations: Record<string, number> = {};
         allSymbols.forEach(symbol => {
             const volumes = (standardizedGroups[symbol] || []).map(i => i.volume).slice(-MOVING_AVERAGE);
-            const correlation = volumes.length > 0 ? calculateCorrelation(btcV, volumes) : 0;
-
-            if (symbol === btcSymbol) {
-                weights[symbol] = Math.max(0.6, 0.8 + baseWeight * correlation);
-            } else if (symbol === 'US10Y') {
-                weights[symbol] = baseWeight * Math.abs(correlation); // 債券通常取絕對值
-            } else {
-                weights[symbol] = baseWeight * correlation;
-            }
+            rawCorrelations[symbol] = volumes.length > 0 ? calculateCorrelation(btcV, volumes) : 0;
         });
+
+        // 3-2. 正規化：絕對值加總為 1，保留正負方向
+        // 正相關資產貢獻正向動能，負相關資產（US10Y、DXY）自然拖累
+        const normalize = (correlations: Record<string, number>): Record<string, number> => {
+            const totalAbs = Object.values(correlations).reduce((sum, v) => sum + Math.abs(v), 0);
+            if (totalAbs === 0) return correlations;
+            return Object.fromEntries(
+                Object.entries(correlations).map(([k, v]) => [k, v / totalAbs])
+            );
+        };
 
         // 4. 計算最終加權動能
         return Array.from(consolidatedData.values()).map((point) => {
-            let weightedVolume = 0;
+            // 高利率情景：US10Y 實際利率 > 4.5% 時，拖累效果加倍，再重新 normalize
+            const us10yKey = getSafeKey(US10Y);
+            const actualRate = point[`_rawPrice_${us10yKey}`] ?? 0;
+            const adjustedCorrelations = { ...rawCorrelations };
+            if (actualRate > 4.5) {
+                adjustedCorrelations[US10Y] = rawCorrelations[US10Y] * 2;
+            }
+            const finalWeights = normalize(adjustedCorrelations);
 
+            let weightedVolume = 0;
             allSymbols.forEach(symbol => {
                 const key = getSafeKey(symbol);
-                let currentWeight = weights[symbol];
-
-                // 特殊邏輯：高利率情景
-                if (symbol === 'US10Y' && point[key] > 4.5) {
-                    currentWeight *= 2;
-                }
-
-                weightedVolume += (point[key] || 0) * currentWeight;
+                weightedVolume += (point[key] || 0) * finalWeights[symbol];
             });
 
             return {
@@ -238,28 +241,30 @@ class MarketPriceSnapshotsService {
 
         // 3. 取得基準值 (BTC) 的切片
         const btcSlice = prices[BTCUSD].slice(-MOVING_AVERAGE);
-        const baseWeight = 0.1;
 
-        /**
-         * 內部計算相關係數權重的邏輯
-         */
-        const getCorrelationWeight = (values: number[], targetPrices: number[]): number => {
+        // 4. 各資產對 BTC 的相關係數（BTC 自己 = 1.0，自然最高）
+        const getCorrelation = (targetPrices: number[]): number => {
             const targetSlice = targetPrices.slice(-MOVING_AVERAGE);
-            // 防止空陣列導致計算錯誤
-            if (values.length === 0 || targetSlice.length === 0) return 0;
-            return baseWeight * calculateCorrelation(values, targetSlice);
+            if (btcSlice.length === 0 || targetSlice.length === 0) return 0;
+            return calculateCorrelation(btcSlice, targetSlice);
         };
 
-        // 4. 計算並回傳最終權重物件
-        return {
-            [BTCUSD]: Number(
-                Math.max(0.6, 0.8 + getCorrelationWeight(btcSlice, prices[BTCUSD])).toFixed(3)
-            ),
-            [DXY]: Number(getCorrelationWeight(btcSlice, prices[DXY]).toFixed(3)),
-            [USOIL]: Number(getCorrelationWeight(btcSlice, prices[USOIL]).toFixed(3)),
-            [US10Y]: Number(getCorrelationWeight(btcSlice, prices[US10Y]).toFixed(3)),
-            [XAUUSD]: Number(getCorrelationWeight(btcSlice, prices[XAUUSD]).toFixed(3)),
+        const rawCorrelations = {
+            [BTCUSD]: getCorrelation(prices[BTCUSD]),
+            [DXY]: getCorrelation(prices[DXY]),
+            [USOIL]: getCorrelation(prices[USOIL]),
+            [US10Y]: getCorrelation(prices[US10Y]),
+            [XAUUSD]: getCorrelation(prices[XAUUSD]),
         };
+
+        // 5. 正規化：絕對值加總為 1，保留正負方向
+        const totalAbs = Object.values(rawCorrelations).reduce((sum, v) => sum + Math.abs(v), 0);
+        return Object.fromEntries(
+            Object.entries(rawCorrelations).map(([k, v]) => [
+                k,
+                Number((totalAbs === 0 ? 0 : v / totalAbs).toFixed(3))
+            ])
+        );
     }
 
     async getMarketDataBySymbol({ symbol, page, size }: GetMarketDataParams) {
