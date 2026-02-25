@@ -9,6 +9,13 @@ class NewsController {
 			const page = Number(req.query.page ?? 1)
 			const size = Number(req.query.size ?? 10)
 			const status = _.get(req, 'query.status', 'published') as string
+
+			if (page <= 3 && status === 'published') {
+				res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400')
+			} else {
+				res.setHeader('Cache-Control', 'no-store')
+			}
+
 			const news = await newsService.getAllNews({ page, size, status })
 			res.json(success(news))
 		} catch (error) {

@@ -2,6 +2,7 @@ import { geminiModel } from './vertexAi';
 import { ServerError } from './errors';
 import { bulkCreateSchema } from '../schemas/newsSchema';
 import newsService from '../services/newsService';
+import redisClient from './redis'
 
 const today = new Date().toISOString().split('T')[0];
 
@@ -40,6 +41,12 @@ function parseGeminiResponse(text: string) {
     return JSON.parse(cleaned);
 }
 
+async function clearNewsCache() {
+    for (let p = 1; p <= 3; p++) {
+        await redisClient.del(`cache:/news?page=${p}&size=10`)
+    }
+}
+
 export async function generateAndSaveNews() {
     const result = await geminiModel.generateContent({
         contents: [{
@@ -71,4 +78,6 @@ export async function generateAndSaveNews() {
     const saved = await newsService.bulkCreateNews(value);
 
     console.log(`✅ 成功寫入 ${saved.length} 筆新聞`);
+
+    clearNewsCache()
 }
