@@ -3,87 +3,91 @@ import { users, admins } from '../db/schema'
 import { eq, count } from 'drizzle-orm'
 import type { Admin, User } from '../types/user'
 
-class AdminService {
-	async getAllUsers() {
-		const result = await db
-			.select({
-				id: users.id,
-				name: users.name,
-				email: users.email,
-				createdAt: users.createdAt,
-				updatedAt: users.updatedAt,
-				admin: {
-					id: admins.id,
-					userId: admins.userId,
-				},
-			})
-			.from(users)
-			.leftJoin(admins, eq(users.id, admins.userId))
-
-		return result.map((row) => {
-			if (!row.admin?.id) {
-				const { admin, ...rest } = row
-				return rest
-			} else {
-				return { ...row, isAdmin: true }
-			}
+export async function getAllUsers() {
+	const result = await db
+		.select({
+			id: users.id,
+			name: users.name,
+			email: users.email,
+			createdAt: users.createdAt,
+			updatedAt: users.updatedAt,
+			admin: {
+				id: admins.id,
+				userId: admins.userId,
+			},
 		})
+		.from(users)
+		.leftJoin(admins, eq(users.id, admins.userId))
+
+	return result.map((row) => {
+		if (!row.admin?.id) {
+			const { admin, ...rest } = row
+			return rest
+		} else {
+			return { ...row, isAdmin: true }
+		}
+	})
+}
+
+export async function setUserAsAdmin(userId: string): Promise<Admin> {
+	const existing = await db
+		.select()
+		.from(admins)
+		.where(eq(admins.userId, userId))
+		.limit(1)
+
+	if (existing.length > 0) {
+		throw new Error('該用戶已經是管理員')
 	}
 
-	async setUserAsAdmin(userId: string): Promise<Admin> {
-		const existing = await db
-			.select()
-			.from(admins)
-			.where(eq(admins.userId, userId))
-			.limit(1)
+	const [newAdmin] = await db
+		.insert(admins)
+		.values({ userId })
+		.returning()
 
-		if (existing.length > 0) {
-			throw new Error('該用戶已經是管理員')
-		}
+	return newAdmin
+}
 
-		const [newAdmin] = await db
-			.insert(admins)
-			.values({ userId })
-			.returning()
+export async function removeAdmin(userId: string): Promise<boolean> {
+	const deleted = await db
+		.delete(admins)
+		.where(eq(admins.userId, userId))
+		.returning()
 
-		return newAdmin
+	if (deleted.length === 0) {
+		throw new Error('該用戶不是管理員')
 	}
 
-	async removeAdmin(userId: string): Promise<boolean> {
-		const deleted = await db
-			.delete(admins)
-			.where(eq(admins.userId, userId))
-			.returning()
+	return true
+}
 
-		if (deleted.length === 0) {
-			throw new Error('該用戶不是管理員')
-		}
+export async function deleteUser(userId: string): Promise<boolean> {
+	const deleted = await db
+		.delete(users)
+		.where(eq(users.id, userId))
+		.returning()
 
-		return true
+	if (deleted.length === 0) {
+		throw new Error('用戶不存在')
 	}
 
-	async deleteUser(userId: string): Promise<boolean> {
-		const deleted = await db
-			.delete(users)
-			.where(eq(users.id, userId))
-			.returning()
+	return true
+}
 
-		if (deleted.length === 0) {
-			throw new Error('用戶不存在')
-		}
+export async function getSystemStats(): Promise<{ userCount: number; adminCount: number }> {
+	const [uCount] = await db.select({ value: count() }).from(users)
+	const [aCount] = await db.select({ value: count() }).from(admins)
 
-		return true
-	}
-
-	async getSystemStats(): Promise<{ userCount: number; adminCount: number }> {
-		const [uCount] = await db.select({ value: count() }).from(users)
-		const [aCount] = await db.select({ value: count() }).from(admins)
-
-		return {
-			userCount: Number(uCount.value),
-			adminCount: Number(aCount.value),
-		}
+	return {
+		userCount: Number(uCount.value),
+		adminCount: Number(aCount.value),
 	}
 }
 
-export default new AdminService()
+export default {
+	getAllUsers,
+	setUserAsAdmin,
+	removeAdmin,
+	deleteUser,
+	getSystemStats,
+}
