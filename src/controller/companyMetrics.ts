@@ -8,30 +8,29 @@ interface GetBySymbolParams {
 }
 
 interface GetBySymbolQuery {
-    days?: string; // Query 參數通常是 string，後續再轉型
+    days?: string;
 }
 
-class CompanyMetricsController {
-    public getBySymbol = async (
-        req: Request,
-        res: Response,
-        next: NextFunction
-    ): Promise<void> => {
-        try {
-            const params = req.params as unknown as GetBySymbolParams;
-            const query = req.query as unknown as GetBySymbolQuery;
+async function getBySymbol(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const params = req.params as unknown as GetBySymbolParams;
+        const query = req.query as unknown as GetBySymbolQuery;
 
-            const symbol = _.upperCase(_.get(params, 'symbol', ''));
-            const days = req.query.days ? parseInt(query.days as string, 10) : undefined;
+        const symbol = _.upperCase(_.get(params, 'symbol', ''));
+        const days = query.days ? parseInt(query.days, 10) : undefined;
 
-            const data = await companyMetricsService.getBySymbol(symbol, days);
+        const data = await companyMetricsService.getBySymbol(symbol, days);
 
-            res.json(success(data));
-        } catch (error) {
-            next(error);
-        }
-    };
+        res.json(success(data));
+    } catch (error) {
+        next(error);
+    }
 }
 
-// 建議導出實例
-export default new CompanyMetricsController();
+export default {
+    getBySymbol
+};
