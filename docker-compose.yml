@@ -56,8 +56,10 @@ services:
     image: ur-trade-app
     container_name: ur-trade-cron
     depends_on:
-      - redis
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     env_file:
       - .env
     environment:
