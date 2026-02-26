@@ -49,6 +49,8 @@ router.get(
 	marketController.getMarketIndicesByDays
 )
 
+router.get('/summary', marketController.getAIMarketSummary)
+
 
 // ------ 動態路由 ------
 

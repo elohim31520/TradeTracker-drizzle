@@ -4,11 +4,15 @@ import { crawlCompanyMetrics } from './modules/crawler/companyMetrics'
 import { crawlStockPrices } from './modules/crawler/stockPrices'
 import { crawlTechNews } from './modules/crawler/technews'
 import { generateAndSaveNews } from './modules/aiNewsGenerator';
+import { generateAndCacheMarketSummary } from './modules/marketSummarizer'
+import { connectRedis } from './modules/redis';
 
 interface CronConfig {
 	schedule: string;
 	mission: () => Promise<void> | void;
 }
+
+connectRedis()
 
 function createCronJob({ schedule, mission }: CronConfig): CronJob {
 	if (!schedule) {
@@ -56,6 +60,11 @@ if (process.env.NODE_ENV === 'production') {
 		schedule: '55 11 * * *',
 		mission: generateAndSaveNews,
 	})
+
+	createCronJob({
+		schedule: '50 7 * * *',
+		mission: generateAndCacheMarketSummary,
+	})
 } else {
 	createCronJob({
 		schedule: '0 15 * * *',
@@ -80,5 +89,10 @@ if (process.env.NODE_ENV === 'production') {
 	createCronJob({
 		schedule: '24 10 * * *',
 		mission: generateAndSaveNews,
+	})
+
+	createCronJob({
+		schedule: '25 21 * * *',
+		mission: generateAndCacheMarketSummary,
 	})
 }

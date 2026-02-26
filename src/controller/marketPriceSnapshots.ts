@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import _ from 'lodash';
 import priceSnapshotsService from '../services/marketPriceSnapshots';
 import { success } from '../modules/responseHelper';
+import { getMarketSummary } from '../modules/marketSummarizer'
 
 async function getAll(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -71,6 +72,15 @@ async function getQuotes(req: Request, res: Response, next: NextFunction): Promi
     }
 }
 
+async function getAIMarketSummary(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+        const data = await getMarketSummary()
+        res.json(success(data));
+    } catch (error) {
+        next(error);
+    }
+}
+
 export default {
     getAll,
     getMomentum,
@@ -78,5 +88,6 @@ export default {
     getMarketIndicesByDays,
     getWeights,
     getMarketDataBySymbol,
-    getQuotes
+    getQuotes,
+    getAIMarketSummary
 };
