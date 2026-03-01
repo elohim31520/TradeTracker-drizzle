@@ -2,6 +2,7 @@ import { geminiModel } from './vertexAi';
 import { ServerError } from './errors';
 import redisClient from './redis';
 import type { MarketSummary } from '../types/marketSummary'
+import logger from './logger'
 
 const REDIS_KEY_LATEST = 'market:summary:latest';
 const getSummaryDatekey = (date: string) => `market:summary:${date}`;
@@ -59,7 +60,7 @@ export async function generateAndCacheMarketSummary(): Promise<void> {
         console.log(`[MarketSummary] ✅ 寫入 Redis 成功：${today}`);
     } catch (err) {
         console.error('[MarketSummary] ❌ 生成失敗', err);
-        throw new ServerError('市場摘要生成失敗');
+        logger.error('[MarketSummary] 市場摘要生成失敗', err);
     }
 }
 
