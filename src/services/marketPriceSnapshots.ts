@@ -122,6 +122,10 @@ export async function getMomentumData(data: MarketDataRow[]): Promise<MomentumRe
         );
     };
 
+    const zScoreToPercentage = (z: number, k: number = 0.8): number => {
+        return ((2 / (1 + Math.exp(-k * z))) - 1) * 100;
+    };
+
     // 4. 計算最終加權動能
     return Array.from(consolidatedData.values()).map((point) => {
         // 高利率情景：US10Y 實際利率 > 4.5% 時，拖累效果加倍，再重新 normalize
@@ -139,9 +143,12 @@ export async function getMomentumData(data: MarketDataRow[]): Promise<MomentumRe
             weightedVolume += (point[key] || 0) * finalWeights[symbol];
         });
 
+        const momentumPercentage = zScoreToPercentage(weightedVolume);
+
         return {
             ct: point.createdAt,
-            v: parseFloat(weightedVolume.toFixed(2)),
+            v: parseFloat(momentumPercentage.toFixed(2)),
+            raw_v: parseFloat(weightedVolume.toFixed(2))
         };
     });
 }
