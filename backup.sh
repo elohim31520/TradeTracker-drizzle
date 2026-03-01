@@ -32,18 +32,22 @@ DB_USER="postgres"
 
 # 設定時間與檔名
 DATE=$(date +%Y%m%d_%H%M%S)
-FILE_NAME="backup_${DB_NAME}_${DATE}.sql.gz"
+FILE_NAME="backup_${DB_NAME}_${DATE}.dump"
 
 # 建立備份目錄
 mkdir -p "$BACKUP_DIR"
 
 # --- 4. 執行 PostgreSQL 備份 ---
-echo "🐘 正在從容器 [$CONTAINER_NAME] 備份資料庫: $DB_NAME ..."
+echo "🐘 正在從容器 [$CONTAINER_NAME] 備份資料庫 (Custom 格式): $DB_NAME ..."
 
-# 使用 pg_dump 並透過環境變數傳遞密碼避免互動式輸入
-# 輸出的資料會直接透過管線壓縮
+# 1. 移除 --clean 與 --if-exists (這改到還原時再決定)
+# 2. 加入 -F c
+# 3. 移除 | gzip，直接導向檔案
 docker exec -e PGPASSWORD="$DB_PASSWORD" "$CONTAINER_NAME" \
-  pg_dump -U "$DB_USER" "$DB_NAME" | gzip > "$BACKUP_DIR/$FILE_NAME"
+  pg_dump -U "$DB_USER" -F c "$DB_NAME" \
+  --no-owner \
+  --no-privileges \
+  > "$BACKUP_DIR/$FILE_NAME"
 
 # 檢查備份是否成功
 if [ $? -eq 0 ]; then
@@ -66,5 +70,5 @@ fi
 
 # --- 6. 清理 VM 本地舊檔案 (保留 7 天) ---
 echo "🧹 清理舊檔案..."
-find "$BACKUP_DIR" -type f -mtime +7 -name "*.sql.gz" -exec rm {} \;
+find "$BACKUP_DIR" -type f -mtime +7 -name "*.dump" -exec rm {} \;
 echo "✨ 備份程序執行完畢。"
