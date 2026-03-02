@@ -21,6 +21,7 @@ const redisConditionalCache = (
                 logger.info(`[Cache] Hit: ${cacheKey}`);
                 res.setHeader('Content-Type', 'application/json');
                 res.setHeader('X-Cache', 'HIT');
+                res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
                 res.send(cachedData);
                 return;
             }
