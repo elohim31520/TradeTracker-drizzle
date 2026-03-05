@@ -19,7 +19,7 @@ class RabbitMQManager {
         return RabbitMQManager.instance;
     }
 
-    public async init(): Promise<void> {
+    public async connect(): Promise<void> {
         if (this.connection || this.isConnecting) return;
 
         this.isConnecting = true;
@@ -32,23 +32,23 @@ class RabbitMQManager {
             // 監聽連線錯誤與斷開
             this.connection.on('error', (err) => {
                 console.error('❌ RabbitMQ Connection error:', err);
-                this.handleReconnect();
+                this.reconnect();
             });
 
             this.connection.on('close', () => {
                 console.warn('⚠️ RabbitMQ Connection closed');
-                this.handleReconnect();
+                this.reconnect();
             });
 
         } catch (error) {
             console.error('❌ Failed to connect to RabbitMQ:', error);
-            this.handleReconnect();
+            this.reconnect();
         } finally {
             this.isConnecting = false;
         }
     }
 
-    private handleReconnect() {
+    private reconnect() {
         if (this.isConnecting) return;
 
         this.connection = null;
@@ -58,13 +58,13 @@ class RabbitMQManager {
 
         setTimeout(() => {
             this.retryCount++;
-            this.init();
+            this.connect();
         }, delay);
     }
 
     public async createChannel(): Promise<amqp.Channel> {
         if (!this.connection) {
-            await this.init();
+            await this.connect();
         }
 
         if (!this.connection) {
@@ -81,8 +81,6 @@ class RabbitMQManager {
     }
 
     public async getOrCreateChannel(purpose: string): Promise<Channel> {
-        if (!this.connection) await this.init();
-
         const existingChannel = this.channels.get(purpose);
         if (existingChannel) return existingChannel;
 
