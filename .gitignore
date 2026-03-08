@@ -3,6 +3,7 @@ todo.txt
 .env
 .env.production
 .env.development
+.env.test
 private.key
 public.key
 symbol.json
