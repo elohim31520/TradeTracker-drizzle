@@ -14,14 +14,14 @@ export async function getAllNews({ page, size, status }: any) {
 			.where(whereClause)
 			.limit(size)
 			.offset(offset)
-			.orderBy(desc(newsTable.createdAt)),
+			.orderBy(desc(newsTable.id)), // 改為 id，匹配複合索引，加速查詢
 		db.select({ total: count() })
 			.from(newsTable)
 			.where(whereClause)
 	])
 
 	return {
-		count: totalResult[0].total,
+		total: totalResult[0].total,
 		rows: data
 	}
 }
