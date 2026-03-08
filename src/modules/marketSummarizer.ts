@@ -64,19 +64,31 @@ export async function generateAndCacheMarketSummary(): Promise<void> {
     }
 }
 
-export async function getMarketSummary(date?: string): Promise<MarketSummary> {
-    try {
-        const key = date ? getSummaryDatekey(date) : REDIS_KEY_LATEST;
-        const cached = await redisClient.get(key);
+let isGenerating = false; // 放在模組層級的變數
 
-        if (!cached) {
-            throw new ServerError('查無市場摘要，可能尚未生成或已過期');
+export async function getMarketSummary(date?: string): Promise<MarketSummary> {
+    const key = date ? getSummaryDatekey(date) : REDIS_KEY_LATEST;
+    let cached = await redisClient.get(key);
+
+    if (!cached) {
+        if (date) throw new ServerError(`查無 ${date} 的歷史資料`);
+
+        // 如果已經有人在生成了，不要重複觸發，否則額度耗盡
+        if (isGenerating) {
+            throw new ServerError('市場摘要正在更新中，請稍後再試');
         }
 
-        return JSON.parse(cached) as MarketSummary;
-    } catch (err) {
-        if (err instanceof ServerError) throw err;
-        console.error('[MarketSummary] ❌ 讀取 Redis 失敗', err);
-        throw new ServerError('讀取市場摘要失敗');
+        try {
+            isGenerating = true; // 上鎖
+            logger.warn('[MarketSummary] 快取遺失，觸發生成...');
+            await generateAndCacheMarketSummary();
+            cached = await redisClient.get(REDIS_KEY_LATEST);
+        } finally {
+            isGenerating = false; // 釋放鎖
+        }
+
+        if (!cached) throw new ServerError('生成失敗');
     }
+
+    return JSON.parse(cached);
 }
