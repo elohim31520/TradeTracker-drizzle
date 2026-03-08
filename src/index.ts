@@ -4,6 +4,7 @@ import 'dotenv/config';
 import { startTradeWorker } from './workers/tradeWorker';
 import { startAiWorker } from './workers/aiWorker '
 import { connectRedis } from './modules/redis';
+import { rabbitMQ } from './modules/rabbitMQManager';
 import app from './app'
 
 const port = Number(process.env.PORT)
@@ -14,7 +15,8 @@ async function bootstrap() {
 	try {
 		await Promise.all([
 			db.execute('SELECT 1'),
-			connectRedis()
+			connectRedis(),
+			rabbitMQ.connect()
 		]);
 
 		console.log('📊 資料庫連線成功')

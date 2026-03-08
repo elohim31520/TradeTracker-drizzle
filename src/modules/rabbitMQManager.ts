@@ -147,6 +147,34 @@ class RabbitMQManager {
             }
         }, { noAck: false });
     }
+
+    public async close(): Promise<void> {
+        try {
+            console.log('🔌 Closing RabbitMQ connection...');
+
+            // 1. 先關閉所有開啟的 Channels
+            for (const [purpose, channel] of this.channels) {
+                try {
+                    await channel.close();
+                    console.log(`✅ Channel [${purpose}] closed`);
+                } catch (err) {
+                    console.error(`❌ Error closing channel [${purpose}]:`, err);
+                }
+            }
+            this.channels.clear();
+
+            // 2. 關閉 Connection
+            if (this.connection) {
+                // 移除監聽器，避免觸發 reconnect
+                this.connection.removeAllListeners();
+                await this.connection.close();
+                this.connection = null;
+                console.log('✅ RabbitMQ Connection closed');
+            }
+        } catch (error) {
+            console.error('❌ Error during RabbitMQ closure:', error);
+        }
+    }
 }
 
 export const rabbitMQ = RabbitMQManager.getInstance();
