@@ -218,7 +218,9 @@ export const news = pgTable('news', {
   isTop: boolean('is_top').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
-});
+}, (table) => [
+  index('status_id_idx').on(table.status, table.id.desc()),
+]);
 
 // --- 餘額表 ---
 export const userBalances = pgTable('user_balances', {

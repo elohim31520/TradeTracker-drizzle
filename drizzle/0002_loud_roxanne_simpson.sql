@@ -1,0 +1,1 @@
+CREATE INDEX "status_id_idx" ON "news" USING btree ("status","id" DESC NULLS LAST);
