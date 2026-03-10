@@ -15,6 +15,13 @@
       "when": 1770632311270,
       "tag": "0001_peaceful_thing",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772938246354,
+      "tag": "0002_loud_roxanne_simpson",
+      "breakpoints": true
     }
   ]
 }
