@@ -1,0 +1,1 @@
+CREATE INDEX "idx_company_metrics_company_id" ON "company_metrics" USING btree ("company_id","id" DESC NULLS LAST);

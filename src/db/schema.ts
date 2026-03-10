@@ -126,7 +126,10 @@ export const companyMetrics = pgTable('company_metrics', {
   volume: integer('volume'),
   marketCap: varchar('market_cap', { length: 32 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+},
+  (table) => [
+    index('idx_company_metrics_company_id').on(table.companyId, table.id.desc()) //這樣 ORDER BY id DESC 可以直接走索引順序
+  ]);
 
 export const companyMetricsRelations = relations(companyMetrics, ({ one }) => ({
   company: one(companies, {

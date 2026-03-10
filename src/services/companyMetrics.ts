@@ -4,8 +4,7 @@ import { eq, gte, and, desc, sql } from 'drizzle-orm';
 import { getZonedDate, subtractDays } from '../modules/date';
 
 export async function getBySymbol(symbol: string, days?: number) {
-    const filters = [];
-    filters.push(eq(companies.symbol, symbol));
+    const filters = [eq(companies.symbol, symbol)];
 
     if (days) {
         const date = subtractDays(getZonedDate(), Number(days));
@@ -27,7 +26,7 @@ export async function getBySymbol(symbol: string, days?: number) {
         .from(companyMetrics)
         .innerJoin(companies, eq(companyMetrics.companyId, companies.id))
         .where(and(...filters))
-        .orderBy(desc(companyMetrics.createdAt));
+        .orderBy(desc(companyMetrics.id));
 
     return data;
 }

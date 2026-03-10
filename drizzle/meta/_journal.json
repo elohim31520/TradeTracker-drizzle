@@ -22,6 +22,13 @@
       "when": 1772938246354,
       "tag": "0002_loud_roxanne_simpson",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1773112656754,
+      "tag": "0003_sudden_centennial",
+      "breakpoints": true
     }
   ]
 }
