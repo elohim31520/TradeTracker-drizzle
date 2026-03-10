@@ -40,8 +40,7 @@ GCS_DEST="gs://${GCS_BUCKET_LOGS_NAME}"
 # --- 3. 使用 gcloud storage 進行備份 ---
 echo "☁️ 正在同步 Log 到 GCS: ${GCS_DEST} ..."
 
-# 使用 rsync 同步。如果還是報權限錯誤，可以考慮暫時改成 cp -r
-gcloud storage rsync "$LOG_DIR" "$GCS_DEST" --recursive
+gcloud storage cp -r "$LOG_DIR" "$GCS_DEST/"
 
 # 檢查上一個指令 (rsync) 的執行結果
 if [ $? -eq 0 ]; then
