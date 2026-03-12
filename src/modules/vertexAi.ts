@@ -8,7 +8,12 @@ const vertex_ai = new VertexAI({ project: project, location: location });
 
 export const geminiModel = vertex_ai.getGenerativeModel({
     model: 'gemini-2.5-flash',
+    tools: [
+        {
+            googleSearch: {},
+        } as any,
+    ],
     generationConfig: {
-        responseMimeType: 'application/json',
+        // responseMimeType: 'application/json',
     },
 });
