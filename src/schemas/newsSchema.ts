@@ -3,33 +3,48 @@ import Joi from 'joi'
 const ALLOWED_STATUSES = ['draft', 'published', 'archived']
 
 const getAllNewsQuerySchema = Joi.object({
-    page: Joi.number()
-        .integer()
-        .min(1)
-        .optional()
-        .messages({
-            'number.base': 'page 必須是一個數字',
-            'number.integer': 'page 必須是一個整數',
-            'number.min': 'page 必須大於或等於 1'
-        }),
+	page: Joi.number()
+		.integer()
+		.min(1)
+		.optional()
+		.messages({
+			'number.base': 'page 必須是一個數字',
+			'number.integer': 'page 必須是一個整數',
+			'number.min': 'page 必須大於或等於 1'
+		}),
 
-    size: Joi.number()
-        .integer()
-        .min(1)
-        .optional()
-        .messages({
-            'number.base': 'size 必須是一個數字',
-            'number.integer': 'size 必須是一個整數',
-            'number.min': 'size 必須大於或等於 1'
-        }),
+	size: Joi.number()
+		.integer()
+		.min(1)
+		.optional()
+		.messages({
+			'number.base': 'size 必須是一個數字',
+			'number.integer': 'size 必須是一個整數',
+			'number.min': 'size 必須大於或等於 1'
+		}),
 
-    status: Joi.string()
-        .valid(...ALLOWED_STATUSES)
-        .optional()
-        .messages({
-            'string.base': 'status 必須是一個字串',
-            'any.only': `status 必須是以下之一: ${ALLOWED_STATUSES.join(', ')}`
-        })
+	status: Joi.string()
+		.valid(...ALLOWED_STATUSES)
+		.optional()
+		.messages({
+			'string.base': 'status 必須是一個字串',
+			'any.only': `status 必須是以下之一: ${ALLOWED_STATUSES.join(', ')}`
+		}),
+
+	keyword: Joi.string()
+		.optional()
+		.allow('')
+		.messages({
+			'string.base': 'keyword 必須是一個字串'
+		}),
+
+	lang: Joi.string()
+		.valid('zh', 'en')
+		.optional()
+		.messages({
+			'string.base': 'lang 必須是一個字串',
+			'any.only': 'lang 必須是 "zh" 或 "en"'
+		})
 });
 
 const createSchema = Joi.object({

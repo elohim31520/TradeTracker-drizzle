@@ -7,14 +7,16 @@ async function getAllNews(req: Request, res: Response, next: NextFunction): Prom
 		const page = Number(req.query.page ?? 1)
 		const size = Number(req.query.size ?? 10)
 		const status = (req.query.status as string) ?? 'published'
+		const keyword = req.query.keyword as string;
+		const lang = req.query.lang as string;
 
-		if (page <= 3 && status === 'published') {
+		if (page <= 3 && status === 'published' && !keyword) {
 			res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400')
 		} else {
 			res.setHeader('Cache-Control', 'no-store')
 		}
 
-		const news = await newsService.getAllNews({ page, size, status })
+		const news = await newsService.getAllNews({ page, size, status, keyword, lang })
 		res.json(success(news))
 	} catch (error) {
 		next(error)

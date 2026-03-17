@@ -1,12 +1,17 @@
 import { db } from '../db/pg'
 import { news as newsTable } from '../db/schema'
 import { NewNews } from '../types/news'
-import { eq, desc, count } from 'drizzle-orm'
+import { eq, desc, count, and, like } from 'drizzle-orm'
 import { generateHash } from '../modules/crypto'
 
-export async function getAllNews({ page, size, status }: any) {
-	const offset = (page - 1) * size
-	const whereClause = status ? eq(newsTable.status, status) : undefined
+export async function getAllNews({ page, size, status, keyword, lang = 'zh' }: any) {
+	const offset = (Math.max(1, page) - 1) * size
+	const target = lang === 'zh' ? newsTable.content : newsTable.contentEn
+
+	const whereClause = and(
+		status ? eq(newsTable.status, status) : undefined,
+		keyword ? like(target, `%${keyword}%`) : undefined
+	)
 
 	const [data, totalResult] = await Promise.all([
 		db.select()
@@ -14,7 +19,8 @@ export async function getAllNews({ page, size, status }: any) {
 			.where(whereClause)
 			.limit(size)
 			.offset(offset)
-			.orderBy(desc(newsTable.id)), // 改為 id，匹配複合索引，加速查詢
+			.orderBy(desc(newsTable.id)),  // 改為 id，匹配複合索引，加速查詢
+
 		db.select({ total: count() })
 			.from(newsTable)
 			.where(whereClause)

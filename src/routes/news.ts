@@ -22,9 +22,10 @@ router.get('/', validate(getAllNewsQuerySchema, 'query'),
 		const page = Number(req.query.page ?? 1)
 		const size = Number(req.query.size ?? 10)
 		const status = req.query.status ?? 'published'
+		const keyword = req.query.keyword
 
-		// 只緩存前三頁、預設 size、published 狀態
-		return page <= 3 && size === 10 && status === 'published'
+		// 只緩存前三頁、預設 size、published 狀態、無關鍵字
+		return page <= 3 && size === 10 && status === 'published' && !keyword
 	}),
 	newsController.getAllNews
 )
