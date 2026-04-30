@@ -12,8 +12,6 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
-    "test:db": "ts-node --transpile-only src/script/test-db.ts",
-    "trade:test": "npx tsx script/stockTrade.ts",
     "crawl": "ts-node src/cronJob.ts"
   },
   "repository": {
@@ -55,10 +53,14 @@
     "reflect-metadata": "^0.2.2",
     "uuidv7": "^1.1.0",
     "winston": "^3.19.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "yahoo-finance2": "^3.14.0"
   },
   "devDependencies": {
     "@faker-js/faker": "^10.2.0",
+    "@testcontainers/postgresql": "^11.12.0",
+    "@testcontainers/rabbitmq": "^11.12.0",
+    "@testcontainers/redis": "^11.12.0",
     "@types/amqplib": "^0.10.6",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
@@ -73,22 +75,9 @@
     "jest": "^30.2.0",
     "nodemon": "^3.1.11",
     "supertest": "^7.2.2",
+    "testcontainers": "^11.12.0",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0"
-  },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "roots": [
-      "<rootDir>/tests"
-    ],
-    "testMatch": [
-      "**/__tests__/**/*.test.ts",
-      "**/?(*.)+(spec|test).ts"
-    ],
-    "transform": {
-      "^.+\\.ts$": "ts-jest"
-    }
   }
 }

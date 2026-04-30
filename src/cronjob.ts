@@ -1,11 +1,11 @@
 import { CronJob } from 'cron';
 import { crawlMarketPriceSnapshots } from './modules/crawler/priceSnapshots'
-import { crawlCompanyMetrics } from './modules/crawler/companyMetrics'
 import { crawlStockPrices } from './modules/crawler/stockPrices'
 import { crawlTechNews } from './modules/crawler/technews'
 import { generateAndSaveNews } from './modules/aiNewsGenerator';
 import { generateAndCacheMarketSummary } from './modules/marketSummarizer'
 import { connectRedis } from './modules/redis';
+import { crawlCompanyMetrics } from './modules/crawler/yfiance'
 
 interface CronConfig {
 	schedule: string;
@@ -67,7 +67,7 @@ if (process.env.NODE_ENV === 'production') {
 	})
 } else {
 	createCronJob({
-		schedule: '0 15 * * *',
+		schedule: '09 17 * * *',
 		mission: crawlCompanyMetrics,
 	})
 
