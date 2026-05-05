@@ -1,6 +1,6 @@
 import { CronJob } from 'cron';
 import { crawlMarketPriceSnapshots } from './modules/crawler/priceSnapshots'
-import { crawlStockPrices } from './modules/crawler/stockPrices'
+import { crawlStockPrices } from './modules/crawler/yStockPrices'
 import { crawlTechNews } from './modules/crawler/technews'
 import { generateAndSaveNews } from './modules/aiNewsGenerator';
 import { generateAndCacheMarketSummary } from './modules/marketSummarizer'
@@ -77,7 +77,7 @@ if (process.env.NODE_ENV === 'production') {
 	})
 
 	createCronJob({
-		schedule: '10 * * * *',
+		schedule: '59 * * * *',
 		mission: crawlStockPrices,
 	})
 
