@@ -29,10 +29,9 @@ async function getStockPrice(symbol: string): Promise<Omit<StockPriceInput, 'com
     // regularMarketChangePercent 是當日漲跌幅（小數，例如 -0.012 代表 -1.2%）
     const price = result.regularMarketPrice?.toString();
     const dayChg = result.regularMarketChangePercent != null
-        ? (result.regularMarketChangePercent * 100).toFixed(2)  // 轉成百分比字串
+        ? result.regularMarketChangePercent.toFixed(2)
         : '0';
-    // Yahoo Finance quote 沒有直接提供 weight（成分股權重），預設帶 '0'
-    // 若你有其他來源可以在這裡替換
+
     const weight = '0';
 
     if (!price) return null;
@@ -42,7 +41,7 @@ async function getStockPrice(symbol: string): Promise<Omit<StockPriceInput, 'com
 
 export async function crawlStockPrices(): Promise<void> {
     try {
-        const sleepTime = 1.2 * 1000;
+        const sleepTime = 2 * 1000;
         const companiesData = await getAllCompanies();
 
         if (!companiesData.length) {
