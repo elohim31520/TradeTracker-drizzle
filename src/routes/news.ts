@@ -18,6 +18,15 @@ import { DAILY_UPDATE_CACHE_TTL } from '../constant/cache'
 const router = express.Router()
 
 router.get('/', validate(getAllNewsQuerySchema, 'query'),
+	(req, res, next) => {
+		const size = Number(req.query.size ?? 1);
+		if (size > 10) {
+			// 如果筆數大於 10，執行登入驗證
+			return authMiddleware(req, res, next);
+		}
+		// 否則直接放行
+		next();
+	},
 	redisConditionalCache(DAILY_UPDATE_CACHE_TTL, (req) => {
 		const page = Number(req.query.page ?? 1)
 		const size = Number(req.query.size ?? 10)
