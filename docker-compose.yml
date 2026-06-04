@@ -33,8 +33,6 @@ services:
     image: ur-trade-app
     container_name: ur-trade-app
     depends_on:
-      postgres:
-        condition: service_healthy # 👈 關鍵：必須健康才啟動
       redis:
         condition: service_started
       rabbitmq:
@@ -43,7 +41,6 @@ services:
     env_file:
       - .env
     environment:
-      - PG_URL=postgres://postgres:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       - RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBIT_PASSWORD}@rabbitmq:5672
     networks:
       - app-network
@@ -56,14 +53,10 @@ services:
     image: ur-trade-app
     container_name: ur-trade-cron
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_started
     env_file:
       - .env
-    environment:
-      - PG_URL=postgres://postgres:${DB_PASSWORD}@postgres:5432/${DB_NAME}
     networks:
       - app-network
     volumes:
@@ -71,25 +64,25 @@ services:
       - ./secrets:/app/secrets
     command: node ./dist/cronjob.js
 
-  postgres:
-    image: postgres:15-alpine
-    container_name: my-postgres
-    restart: always
-    environment:
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_USER=postgres
-    ports:
-      - '5432:5432'
-    networks:
-      - app-network
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres -d ur_trade']
-      interval: 5s
-      timeout: 5s
-      retries: 5
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: my-postgres
+  #   restart: always
+  #   environment:
+  #     - POSTGRES_PASSWORD=${DB_PASSWORD}
+  #     - POSTGRES_DB=${DB_NAME}
+  #     - POSTGRES_USER=postgres
+  #   ports:
+  #     - '5432:5432'
+  #   networks:
+  #     - app-network
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ['CMD-SHELL', 'pg_isready -U postgres -d ur_trade']
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -109,5 +102,4 @@ volumes:
   certbot-etc:
   certbot-var:
   redis-data: {}
-  postgres-data: {}
   rabbitmq-data: {}
