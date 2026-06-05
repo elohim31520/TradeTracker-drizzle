@@ -1,5 +1,5 @@
 import { rabbitMQ } from '../modules/rabbitMQManager';
-import { geminiModel } from '../modules/vertexAi';
+import { ai, geminiConfig } from '../modules/vertexAi';
 import { ServerError } from '../modules/errors';
 import { bulkCreateSchema } from '../schemas/tradeSchema'
 import { updateJobStatus } from '../modules/util'
@@ -87,8 +87,9 @@ export const startAiWorker = async () => {
 
         try {
             console.log(`🤖 [AI Worker] Calling Gemini...`);
-            // 呼叫 Gemini
-            const result = await geminiModel.generateContent({
+
+            const result = await ai.models.generateContent({
+                ...geminiConfig,
                 contents: [{
                     role: 'user',
                     parts: [
@@ -98,13 +99,13 @@ export const startAiWorker = async () => {
                 }],
             });
 
-            const part = result.response.candidates?.[0]?.content?.parts?.[0];
+            const text = result.text;
 
-            if (!part?.text) {
+            if (!text) {
                 throw new Error('AI 未能產生有效的文字內容');
             }
 
-            const extractedData = parseGeminiResponse(part.text);
+            const extractedData = parseGeminiResponse(text);
 
             // 驗證每筆資料
             const { error, value } = bulkCreateSchema.validate(extractedData);

@@ -26,7 +26,7 @@
   "homepage": "https://github.com/elohim31520/TradeTracker-drizzle#readme",
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",
-    "@google-cloud/vertexai": "^1.10.0",
+    "@google/genai": "^2.8.0",
     "@types/crypto-js": "^4.2.2",
     "@types/joi": "^17.2.2",
     "amqplib": "^0.10.9",

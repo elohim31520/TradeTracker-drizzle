@@ -1,4 +1,4 @@
-import { geminiModel } from './vertexAi';
+import { ai, geminiConfig } from './vertexAi';
 import { ServerError } from './errors';
 import { bulkCreateSchema } from '../schemas/newsSchema';
 import newsService from '../services/newsService';
@@ -88,22 +88,23 @@ export async function generateAndSaveNews() {
 
     const prompt = buildPrompt(recentNews);
 
-    const result = await geminiModel.generateContent({
+    const result = await ai.models.generateContent({
+        ...geminiConfig,
         contents: [{
             role: 'user',
             parts: [{ text: prompt }],
         }],
     });
 
-    const part = result.response.candidates?.[0]?.content?.parts?.[0];
+    const text = result.text;
 
-    if (!part?.text) {
+    if (!text) {
         throw new ServerError('AI 未能產生有效的文字內容');
     }
 
     let extractedData: unknown;
     try {
-        extractedData = parseGeminiResponse(part.text);
+        extractedData = parseGeminiResponse(text);
     } catch (e) {
         throw new ServerError(`AI 回傳內容無法解析為 JSON: ${(e as Error).message}`);
     }

@@ -1,4 +1,4 @@
-import { geminiModel } from './vertexAi';
+import { ai, geminiConfig } from './vertexAi';
 import { ServerError } from './errors';
 import redisClient from './redis';
 import type { MarketSummary } from '../types/marketSummary'
@@ -39,18 +39,18 @@ export async function generateAndCacheMarketSummary(): Promise<void> {
             }
         `;
 
-        const result = await geminiModel.generateContent({
+        const result = await ai.models.generateContent({
+            ...geminiConfig,
             contents: [{
                 role: 'user',
-                parts: [
-                    { text: prompt }
-                ],
+                parts: [{ text: prompt }],
             }],
         });
-        const text = result.response.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+
+        const text = result.text ?? '';
 
         const cleaned = text.replace(/```json|```/g, '').trim();
-        JSON.parse(cleaned); // 只是驗證，不用接變數
+        JSON.parse(cleaned);
 
         await Promise.all([
             redisClient.set(getSummaryDatekey(today), cleaned, { EX: TTL_SECONDS }),

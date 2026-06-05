@@ -1,6 +1,5 @@
 import { Request } from 'express'
-import { Part } from '@google-cloud/vertexai';
-
+import { Part } from '@google/genai';
 declare global {
   namespace Express {
     interface Request {
