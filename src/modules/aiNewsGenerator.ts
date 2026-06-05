@@ -6,7 +6,7 @@ import redisClient from './redis'
 import { db } from '../db/pg'
 import { news as newsTable } from '../db/schema'
 import { gte, and, eq } from 'drizzle-orm';
-import { subDays, startOfDay } from 'date-fns';
+import { subDays, startOfDay, format } from 'date-fns';
 
 const today = new Date().toISOString().split('T')[0];
 
@@ -23,10 +23,16 @@ function getRecentNewsPromptSection(recentNews: { content: string }[]): string {
 }
 
 function buildPrompt(recentNews: { content: string }[]): string {
+    const sevenDaysAgoObj = startOfDay(subDays(new Date(), 7));
+    const sevenDaysAgo = format(sevenDaysAgoObj, 'yyyy-MM-dd');
+
     return `
         你是一位科技新聞編輯，專注於矽谷與全球科技圈的重大事件。
+        現在的日期是 ${today}。
 
-        請根據你對 ${today} 前的最新科技動態的知識，產出近期重要新聞。
+        【核心任務】
+            請根據你對科技動態的知識，產出發生在「${sevenDaysAgo} 到 ${today}」這段期間內的近期重要新聞。
+            **嚴格禁止**輸出早於 ${sevenDaysAgo} 的任何舊事件或舊傳聞。
 
         【報導範疇】
             - 人工智慧與大型語言模型（AI/LLM）
