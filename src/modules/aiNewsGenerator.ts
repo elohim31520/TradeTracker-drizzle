@@ -6,9 +6,10 @@ import redisClient from './redis'
 import { db } from '../db/pg'
 import { news as newsTable } from '../db/schema'
 import { gte, and, eq } from 'drizzle-orm';
-import { subDays, startOfDay, format } from 'date-fns';
+import { subDays, startOfDay } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 
-const today = new Date().toISOString().split('T')[0];
+const NEWS_TIMEZONE = 'Asia/Taipei';
 
 function getRecentNewsPromptSection(recentNews: { content: string }[]): string {
     if (recentNews.length === 0) return '';
@@ -23,15 +24,17 @@ function getRecentNewsPromptSection(recentNews: { content: string }[]): string {
 }
 
 function buildPrompt(recentNews: { content: string }[]): string {
-    const sevenDaysAgoObj = startOfDay(subDays(new Date(), 7));
-    const sevenDaysAgo = format(sevenDaysAgoObj, 'yyyy-MM-dd');
+    // 每次產生 prompt 時才計算日期，cron 容器長時間運行，不能在模組載入時算一次
+    const now = new Date();
+    const today = formatInTimeZone(now, NEWS_TIMEZONE, 'yyyy-MM-dd');
+    const sevenDaysAgo = formatInTimeZone(subDays(now, 7), NEWS_TIMEZONE, 'yyyy-MM-dd');
 
     return `
         你是一位科技新聞編輯，專注於矽谷與全球科技圈的重大事件。
         現在的日期是 ${today}。
 
         【核心任務】
-            請根據你對科技動態的知識，產出發生在「${sevenDaysAgo} 到 ${today}」這段期間內的近期重要新聞。
+            請使用 Google 搜尋查找最新資訊，產出發生在「${sevenDaysAgo} 到 ${today}」這段期間內的近期重要新聞。
             **嚴格禁止**輸出早於 ${sevenDaysAgo} 的任何舊事件或舊傳聞。
 
         【報導範疇】
@@ -40,7 +43,7 @@ function buildPrompt(recentNews: { content: string }[]): string {
             - 能源與永續科技（核融合、太陽能、電動車）
             - 太空探索與商業航太
             - 半導體與硬體突破
-            - 矽谷重要公司動態（融資、併購、裁員、產品發布
+            - 矽谷重要公司動態（融資、併購、裁員、產品發布）
 
         ${getRecentNewsPromptSection(recentNews)}
 
@@ -66,12 +69,32 @@ function buildPrompt(recentNews: { content: string }[]): string {
 
 function parseGeminiResponse(text: string) {
     const cleaned = text.replace(/```json|```/g, '').trim();
-    return JSON.parse(cleaned);
+    try {
+        return JSON.parse(cleaned);
+    } catch {
+        // 模型偶爾會在 JSON 前後多加說明文字（或結尾帶 [1] 這類引用），
+        // 退而從第一個 [ 開始，由後往前找能成功解析的 ]
+        const start = cleaned.indexOf('[');
+        for (let end = cleaned.lastIndexOf(']'); end > start; end = cleaned.lastIndexOf(']', end - 1)) {
+            try {
+                return JSON.parse(cleaned.slice(start, end + 1));
+            } catch {
+                // 這個 ] 不是陣列結尾，繼續往前找
+            }
+        }
+        throw new Error('回傳內容中找不到 JSON 陣列');
+    }
 }
 
+// 快取 key 是 `cache:${完整 URL}`（見 redisConditionalCache），query 參數的順序或 lang 都會產生不同的 key，
+// 所以用 pattern 掃描刪除，而不是列舉固定的 key。快取清除失敗不該讓整個任務失敗
 async function clearNewsCache() {
-    for (let p = 1; p <= 3; p++) {
-        await redisClient.del(`cache:/news?page=${p}&size=10`)
+    try {
+        for await (const keys of redisClient.scanIterator({ MATCH: 'cache:/news*', COUNT: 100 })) {
+            if (keys.length) await redisClient.del(keys);
+        }
+    } catch (e) {
+        console.error('⚠️ 清除新聞快取失敗:', e);
     }
 }
 
@@ -115,6 +138,12 @@ export async function generateAndSaveNews() {
         throw new ServerError(`AI 回傳內容無法解析為 JSON: ${(e as Error).message}`);
     }
 
+    // prompt 要求「不確定就回傳空陣列」，這是正常結果，不是錯誤
+    if (Array.isArray(extractedData) && extractedData.length === 0) {
+        console.log('ℹ️ AI 判斷近期沒有可信的新聞，本次不寫入');
+        return;
+    }
+
     const { error, value } = bulkCreateSchema.validate(extractedData);
     if (error) {
         throw new ServerError(`AI 產生的資料格式不符: ${error.details.map(d => d.message).join(', ')}`);
@@ -124,5 +153,5 @@ export async function generateAndSaveNews() {
 
     console.log(`✅ 成功寫入 ${saved.length} 筆新聞`);
 
-    clearNewsCache();
+    await clearNewsCache();
 }
