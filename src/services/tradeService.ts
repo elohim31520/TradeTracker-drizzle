@@ -54,13 +54,14 @@ export async function getAll({ userId, page, size }: GetAllTradesParams): Promis
 		} : null,
 	}))
 
-	const totalPages = Math.ceil(count / size)
+	const totalCount = Number(count);
+	const totalPages = Math.ceil(totalCount / size);
 
 	return {
 		data,
-		total: count,
+		total: totalCount,
 		page,
-		size,
+		size: size,
 		totalPages,
 	}
 }
