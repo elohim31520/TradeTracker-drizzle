@@ -1,5 +1,6 @@
 import { ai, geminiConfig } from './vertexAi';
 import { ServerError } from './errors';
+import { parseAiJson } from './util';
 import { bulkCreateSchema } from '../schemas/newsSchema';
 import newsService from '../services/newsService';
 import redisClient from './redis'
@@ -67,25 +68,6 @@ function buildPrompt(recentNews: { content: string }[]): string {
     `;
 }
 
-function parseGeminiResponse(text: string) {
-    const cleaned = text.replace(/```json|```/g, '').trim();
-    try {
-        return JSON.parse(cleaned);
-    } catch {
-        // 模型偶爾會在 JSON 前後多加說明文字（或結尾帶 [1] 這類引用），
-        // 退而從第一個 [ 開始，由後往前找能成功解析的 ]
-        const start = cleaned.indexOf('[');
-        for (let end = cleaned.lastIndexOf(']'); end > start; end = cleaned.lastIndexOf(']', end - 1)) {
-            try {
-                return JSON.parse(cleaned.slice(start, end + 1));
-            } catch {
-                // 這個 ] 不是陣列結尾，繼續往前找
-            }
-        }
-        throw new Error('回傳內容中找不到 JSON 陣列');
-    }
-}
-
 // 快取 key 是 `cache:${完整 URL}`（見 redisConditionalCache），query 參數的順序或 lang 都會產生不同的 key，
 // 所以用 pattern 掃描刪除，而不是列舉固定的 key。快取清除失敗不該讓整個任務失敗
 async function clearNewsCache() {
@@ -133,7 +115,7 @@ export async function generateAndSaveNews() {
 
     let extractedData: unknown;
     try {
-        extractedData = parseGeminiResponse(text);
+        extractedData = parseAiJson(text, 'array');
     } catch (e) {
         throw new ServerError(`AI 回傳內容無法解析為 JSON: ${(e as Error).message}`);
     }

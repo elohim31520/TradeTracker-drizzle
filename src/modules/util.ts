@@ -36,6 +36,33 @@ export function decodeBuffer(buffer: Buffer | ArrayBuffer, encoding: string = 'u
 	return iconv.decode(buf, encoding);
 }
 
+/**
+ * 解析 AI 回傳的 JSON 文字。
+ * 先去掉 markdown 圍欄後直接解析；失敗時退而從第一個開頭符號（{ 或 [）開始，
+ * 由後往前找能成功解析的結尾符號，容忍模型在前後多加說明文字或 [1] 這類引用。
+ * expect 可指定預期是物件或陣列，避免前面說明文字裡的括號被誤認成開頭
+ */
+export function parseAiJson(text: string, expect?: 'array' | 'object'): unknown {
+	const cleaned = text.replace(/```json|```/g, '').trim()
+	try {
+		return JSON.parse(cleaned)
+	} catch {
+		const opener = expect === 'array' ? '[' : expect === 'object' ? '{' : undefined
+		const start = opener ? cleaned.indexOf(opener) : cleaned.search(/[\[{]/)
+		if (start !== -1) {
+			const closer = cleaned[start] === '{' ? '}' : ']'
+			for (let end = cleaned.lastIndexOf(closer); end > start; end = cleaned.lastIndexOf(closer, end - 1)) {
+				try {
+					return JSON.parse(cleaned.slice(start, end + 1))
+				} catch {
+					// 這個結尾符號不是 JSON 的結尾，繼續往前找
+				}
+			}
+		}
+		throw new Error('回傳內容中找不到有效的 JSON')
+	}
+}
+
 
 export const updateJobStatus = async (jobId: string, status: 'success' | 'failed' | 'pending', message?: string) => {
 	try {
