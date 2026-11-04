@@ -6,6 +6,7 @@ import { generateAndSaveNews } from './modules/aiNewsGenerator';
 import { generateAndCacheMarketSummary } from './modules/marketSummarizer'
 import { connectRedis } from './modules/redis';
 import { crawlCompanyMetrics } from './modules/crawler/yfiance'
+import logger from './modules/logger'
 
 interface CronConfig {
 	schedule: string;
@@ -19,15 +20,18 @@ function createCronJob({ schedule, mission }: CronConfig): CronJob {
 		throw new Error('Schedule is required');
 	}
 
-	const job = new CronJob(
-		schedule,
-		mission,
-		null,
-		true,
-		'Asia/Taipei'
-	);
+	const name = mission.name || schedule;
 
-	return job;
+	return CronJob.from({
+		cronTime: schedule,
+		onTick: mission,
+		start: true,
+		timeZone: 'Asia/Taipei',
+		name,
+		// mission throw / reject 時，cron 套件預設只會 console.error，不會進 logs/，
+		// 也就不會被 backup_logs.sh 同步到 GCS。改走 winston，寫進 logs/application-*.log
+		errorHandler: (err) => logger.error(`[Cron] ${name} 執行失敗`, err),
+	});
 }
 
 if (process.env.NODE_ENV === 'production') {

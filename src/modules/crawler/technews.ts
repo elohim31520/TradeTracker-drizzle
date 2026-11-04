@@ -94,6 +94,6 @@ export async function crawlTechNews(): Promise<void> {
 			}
 		}
 	} catch (e: any) {
-		console.error('爬蟲主流程發生嚴重錯誤:', (e as Error).message);
+		logger.error('爬蟲主流程發生嚴重錯誤', e);
 	}
 }

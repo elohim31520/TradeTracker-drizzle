@@ -9,6 +9,7 @@ import { news as newsTable } from '../db/schema'
 import { gte, and, eq } from 'drizzle-orm';
 import { subDays, startOfDay } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
+import logger from './logger';
 
 const NEWS_TIMEZONE = 'Asia/Taipei';
 
@@ -76,7 +77,7 @@ async function clearNewsCache() {
             if (keys.length) await redisClient.del(keys);
         }
     } catch (e) {
-        console.error('⚠️ 清除新聞快取失敗:', e);
+        logger.error('⚠️ 清除新聞快取失敗', e);
     }
 }
 
