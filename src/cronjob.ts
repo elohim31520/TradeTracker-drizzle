@@ -1,7 +1,6 @@
 import { CronJob } from 'cron';
 import { crawlMarketPriceSnapshots } from './modules/crawler/priceSnapshots'
 import { crawlStockPrices } from './modules/crawler/yStockPrices'
-import { crawlTechNews } from './modules/crawler/technews'
 import { generateAndSaveNews } from './modules/aiNewsGenerator';
 import { generateAndCacheMarketSummary } from './modules/marketSummarizer'
 import { connectRedis } from './modules/redis';
@@ -56,11 +55,6 @@ if (process.env.NODE_ENV === 'production') {
 	})
 
 	createCronJob({
-		schedule: '41 */6 * * *',
-		mission: crawlTechNews,
-	})
-
-	createCronJob({
 		schedule: '55 11 * * *',
 		mission: generateAndSaveNews,
 	})
@@ -83,11 +77,6 @@ if (process.env.NODE_ENV === 'production') {
 	createCronJob({
 		schedule: '59 * * * *',
 		mission: crawlStockPrices,
-	})
-
-	createCronJob({
-		schedule: '41 * * * *',
-		mission: crawlTechNews,
 	})
 
 	createCronJob({
