@@ -1,7 +1,10 @@
-import { GoogleGenAI, DynamicRetrievalConfigMode } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import 'dotenv/config';
 
-const project = process.env.GCP_PROJECT_ID ?? '';
+const project = process.env.GCP_PROJECT_ID;
+if (!project) {
+    throw new Error('GCP_PROJECT_ID is not set');
+}
 const location = 'global';
 
 export const ai = new GoogleGenAI({
