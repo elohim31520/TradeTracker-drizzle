@@ -46,11 +46,14 @@ if (process.env.NODE_ENV === 'production') {
 	})
 
 	/**
-	 * 早上更新 stock prices，原因是爬蟲的網站可能是美東晚上才更新
+	 * 美股收盤後更新 stock prices（收盤時間：台北冬令 05:00、夏令 04:00，台北沒有夏令時間）。
+	 * quote() 是即時報價，收盤後 regularMarketPrice 就固定為收盤價，不需等 Yahoo 批次更新；
+	 * 06:00 留 1~2 小時緩衝，且爬蟲遇到盤中（marketState=REGULAR）會整批略過，不會把盤中價當收盤價。
+	 * 爬完會清掉 /stock/today、/stock/breadth 的快取。
 	 * 週日周一不取 因為周末休市
 	 */
 	createCronJob({
-		schedule: '0 10 * * 2-6',
+		schedule: '0 6 * * 2-6',
 		mission: crawlStockPrices,
 	})
 
