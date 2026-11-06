@@ -1,7 +1,7 @@
 #!/bin/bash
 # 備份 Cloud SQL (PostgreSQL) 並上傳到 GCS
 #
-# 需求：主機有 docker 與 gcloud；.env 內有 PG_URL、GCS_BUCKET
+# 需求：主機有 docker 與 gcloud；.env 內有 PG_URL、GCS_BUCKET_NAME
 # 資料庫已改由 Cloud SQL 託管，不再有 my-postgres 容器，
 # 因此改用一次性的 pg_dump 容器直接連 PG_URL，主機不需要安裝 postgresql-client。
 
@@ -35,7 +35,14 @@ fi
 
 # --- 2. 檢查必要變數 ---
 : "${PG_URL:?需在 .env 設定 PG_URL (Cloud SQL 連線字串)}"
-: "${GCS_BUCKET:?需在 .env 設定 GCS_BUCKET}"
+: "${GCS_BUCKET_NAME:?需在 .env 設定 GCS_BUCKET_NAME (只要 bucket 名稱，不含 gs://)}"
+
+# 與圖片上傳共用同一個 bucket（GCS_BUCKET_NAME）：dump 放在 backups/ 底下，
+# 方便日後只對這個前綴設定 lifecycle（例如 7 天自動刪除），不會影響使用者上傳的圖片
+# 容許 GCS_BUCKET_NAME 誤寫成 gs://xxx/ 的形式
+GCS_BUCKET_ID="${GCS_BUCKET_NAME#gs://}"
+GCS_BUCKET_ID="${GCS_BUCKET_ID%/}"
+GCS_DEST="gs://${GCS_BUCKET_ID}/backups/"
 
 # 從 PG_URL 取出資料庫名稱（去掉 ?sslmode=... 等參數），只用在檔名
 DB_NAME_FROM_URL="${PG_URL##*/}"
@@ -68,8 +75,8 @@ fi
 echo "✅ 本地備份完成: $BACKUP_DIR/$FILE_NAME"
 
 # --- 4. 上傳至 GCS ---
-echo "☁️ 正在上傳至 $GCS_BUCKET ..."
-if gcloud storage cp "$BACKUP_DIR/$FILE_NAME" "${GCS_BUCKET%/}/"; then
+echo "☁️ 正在上傳至 $GCS_DEST ..."
+if gcloud storage cp "$BACKUP_DIR/$FILE_NAME" "$GCS_DEST"; then
     echo "🚀 GCS 上傳成功！"
 else
     echo "❌ 上傳失敗，請檢查 gcloud 權限（VM 的 service account 與 access scope）或 Bucket 路徑"
