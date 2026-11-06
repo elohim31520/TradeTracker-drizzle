@@ -1,3 +1,10 @@
+# 所有容器共用：限制 json-file 日誌大小，避免 stdout（含每筆 SQL）把 VM 硬碟寫滿
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
 services:
   # --- 訊息隊列 (RabbitMQ) ---
   rabbitmq:
@@ -7,36 +14,68 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
       - RABBITMQ_DEFAULT_PASS=${RABBIT_PASSWORD}
+    # 容器之間走 app-network 內網，不需對外開放；只綁 loopback，
+    # 需要管理介面時用 `ssh -L 15672:localhost:15672 <vm>` 連進來
     ports:
-      - '5672:5672'
-      - '15672:15672'
+      - '127.0.0.1:5672:5672'
+      - '127.0.0.1:15672:15672'
     networks:
       - app-network
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
-      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      # 不用 ping：它只確認 Erlang 節點活著，5672 可能還沒開始接受連線，
+      # app 會因 ECONNREFUSED 啟動失敗而重啟。check_port_connectivity 會實際對所有監聽埠建立 TCP 連線
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'check_port_connectivity']
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    logging: *default-logging
 
   redis:
     image: 'redis:alpine'
     container_name: redis
+    # 沒有 restart policy 的話，VM 重開機後 redis 不會回來，app 會一直重啟
+    restart: unless-stopped
     networks:
       - app-network
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging: *default-logging
+
+  # --- 一次性：把 bind mount 的 logs/secrets 改成容器內 node 使用者 (uid 1000) 擁有 ---
+  # 新 VM 上 ./logs ./secrets 不存在時，Docker 會以 root 建立，
+  # 以 node 執行的 app 會寫不進去（EACCES：產生金鑰失敗、winston 直接 crash）
+  init-perms:
+    image: ur-trade-app
+    pull_policy: never # 映像檔由 app 服務 build，不要去 registry 拉
+    container_name: ur-trade-init-perms
+    user: root
+    entrypoint: []
+    command: chown -R node:node /app/logs /app/secrets
+    restart: 'no'
+    volumes:
+      - ./logs:/app/logs
+      - ./secrets:/app/secrets
+    logging: *default-logging
 
   app:
     build: .
     image: ur-trade-app
     container_name: ur-trade-app
     depends_on:
+      init-perms:
+        condition: service_completed_successfully
       redis:
-        condition: service_started
+        condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     restart: always
     env_file:
       - .env
@@ -47,14 +86,35 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./secrets:/app/secrets
+    # entrypoint.sh 會先產生 JWT 金鑰（若不存在）並執行 DB migration，再啟動
     command: node ./dist/index.js
+    healthcheck:
+      # 能連上 PORT 代表 migration、Redis、RabbitMQ、worker 都已完成並開始監聽
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('net').connect(process.env.PORT || 3000, '127.0.0.1').once('connect', () => process.exit(0)).once('error', () => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 90s
+    logging: *default-logging
 
   cron:
     image: ur-trade-app
+    pull_policy: never # 映像檔由 app 服務 build，不要去 registry 拉
     container_name: ur-trade-cron
+    # 金鑰產生與 migration 只由 app 負責，避免兩個容器同時做（競爭會導致 migration 失敗、金鑰不成對）
+    # cron 載入時會讀 secrets/private.key，所以要等 app healthy（金鑰與 schema 都已就緒）
+    entrypoint: []
+    command: node ./dist/cronjob.js
     depends_on:
+      app:
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
+    restart: unless-stopped
     env_file:
       - .env
     networks:
@@ -62,27 +122,7 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./secrets:/app/secrets
-    command: node ./dist/cronjob.js
-
-  # postgres:
-  #   image: postgres:15-alpine
-  #   container_name: my-postgres
-  #   restart: always
-  #   environment:
-  #     - POSTGRES_PASSWORD=${DB_PASSWORD}
-  #     - POSTGRES_DB=${DB_NAME}
-  #     - POSTGRES_USER=postgres
-  #   ports:
-  #     - '5432:5432'
-  #   networks:
-  #     - app-network
-  #   volumes:
-  #     - postgres-data:/var/lib/postgresql/data
-  #   healthcheck:
-  #     test: ['CMD-SHELL', 'pg_isready -U postgres -d ur_trade']
-  #     interval: 5s
-  #     timeout: 5s
-  #     retries: 5
+    logging: *default-logging
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -90,16 +130,16 @@ services:
     restart: unless-stopped
     command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     networks:
       - app-network
+    logging: *default-logging
 
 networks:
   app-network:
     driver: bridge
 
 volumes:
-  certbot-etc:
-  certbot-var:
   redis-data: {}
   rabbitmq-data: {}

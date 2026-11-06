@@ -14,7 +14,9 @@ echo "執行時間: $(date)"
 if [ -f "$ENV_FILE" ]; then
     # 使用與資料庫腳本相同的載入邏輯
     set -a
-    source "$ENV_FILE"
+    # tr -d '\r'：.env 若是 CRLF，值尾端會多一個 \r，導致 bucket 名稱錯誤
+    # 用 eval 而非 source <(...)：macOS 內建的 bash 3.2 對 process substitution 的 source 會靜默失敗
+    eval "$(tr -d '\r' < "$ENV_FILE")"
     set +a
     echo "✅ 成功載入 .env 變數"
 else

@@ -17,3 +17,4 @@ src/scripts/index.html
 src/scripts/token
 logs/
 /secrets
+/playground

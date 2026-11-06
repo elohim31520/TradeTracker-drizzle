@@ -1,12 +1,17 @@
 # 1. 核心排除
 .git
+.gitattributes
 node_modules
 Dockerfile
 .dockerignore
+docker-compose*.yml
+dist/
 
 # 2. 測試與開發相關
 tests/
 __tests__/
+playground/
+script/
 jest.config.js
 vitest.config.ts
 cypress/
@@ -15,21 +20,22 @@ cypress/
 
 # 3. 本機產生的記錄與暫存
 log/
+logs/
 *.log
 npm-debug.log*
 .npm/
 .cache/
+todo.txt
 
-# 4. 敏感資訊
-.env
-.env.local
-.env.production
+# 4. 敏感資訊與執行期資料（金鑰、環境變數、備份都不該進 build context）
+.env*
+secrets/
 backup/
+backup.sh
+backup_logs.sh
+lifecycle.json
 
 # 5. IDE 產生的垃圾
 .vscode/
 .idea/
 .DS_Store
-
-
-dist/

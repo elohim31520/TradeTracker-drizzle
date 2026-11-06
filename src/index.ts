@@ -2,7 +2,7 @@ import 'reflect-metadata'
 import { db } from './db/pg'
 import 'dotenv/config';
 import { startTradeWorker } from './workers/tradeWorker';
-import { startAiWorker } from './workers/aiWorker '
+import { startAiWorker } from './workers/aiWorker'
 import { connectRedis } from './modules/redis';
 import { rabbitMQ } from './modules/rabbitMQManager';
 import app from './app'
