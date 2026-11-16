@@ -1,5 +1,5 @@
 import { CronJob } from 'cron';
-import { crawlMarketPriceSnapshots } from './modules/crawler/priceSnapshots'
+import { crawlMarketPriceSnapshots } from './modules/crawler/yPriceSnapshots'
 import { crawlStockPrices } from './modules/crawler/yStockPrices'
 import { generateAndSaveNews } from './modules/aiNewsGenerator';
 import { generateAndCacheMarketSummary } from './modules/marketSummarizer'
