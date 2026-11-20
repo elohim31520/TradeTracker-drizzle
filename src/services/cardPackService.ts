@@ -21,7 +21,7 @@ import type {
 /** 重發次數的日期 yyyy-MM-dd（UTC）：次數以它為界，每天 UTC 00:00 重發 */
 const resetDay = (now: Date) => formatInTimeZone(now, CARD_PACK_RESET_TIMEZONE, 'yyyy-MM-dd');
 
-/** 目前的卡池；還沒生成、已過期或內容壞掉都回 null（對外一律是「準備中」） */
+/** 目前的卡池；還沒上傳、已過期或內容壞掉都回 null（對外一律是「準備中」） */
 export async function getPool(): Promise<CardPackPool | null> {
     const raw = await redisClient.get(cardPackKeys.poolLatest);
     if (!raw) return null;
@@ -116,8 +116,8 @@ export async function draw(userId: string, options: DrawOptions = {}): Promise<C
         if (used >= CARD_PACK_DAILY_OPENS) throw new AppError('今日抽卡次數已用完', 429);
 
         // 已抽過的清單是「每個池子一份」（key 帶池子日期），不是每天一份：
-        // 池子只在美股交易日收盤後產生（台北週二到週六 06:30），週日、週一與休市日沒有新池子，
-        // 但次數照樣每天（UTC）重發。例如週五收盤的池子在台北週六早上產生，週六、週日、週一
+        // 池子只在美股交易日收盤後由管理員上傳（台北週二到週六早上），週日、週一與休市日沒有新池子，
+        // 但次數照樣每天（UTC）重發。例如週五收盤的池子在台北週六早上上傳，週六、週日、週一
         // 每天重發的 5 包都從這同一個池子抽，已抽過的跨天累積（最多 15 張，不重複）；
         // 週二早上週一收盤的新池子出來，是另一個 key，已抽過從空的開始。
         // 池子連假撐太多天、整個抽過一輪時，下面會忽略排除、重新輪一輪。

@@ -11,6 +11,7 @@ import { collectSnapshots, MarketOpenError, type CompanySnapshot } from './marke
 import { assignRarities } from './signals';
 import { cardPackKeys } from './keys';
 import { mapLimit } from './mapLimit';
+import { savePool } from './cardPackPublisher';
 
 /**
  * 成功的卡少於這個數量就不寫入。等於每人每天可拆的包數（目前 5）：再少連一天都抽不滿。
@@ -41,24 +42,6 @@ async function generateContentWithRetry(snapshot: CompanySnapshot): Promise<Gene
         }
     }
     throw lastError;
-}
-
-async function savePool(pool: CardPackPool): Promise<void> {
-    const payload = JSON.stringify(pool);
-
-    let latestDate: string | null = null;
-    try {
-        const latest = await redisClient.get(cardPackKeys.poolLatest);
-        latestDate = latest ? (JSON.parse(latest) as CardPackPool).date : null;
-    } catch {
-        // latest 壞掉或讀不到就當作沒有，直接覆蓋
-    }
-
-    await redisClient.set(cardPackKeys.pool(pool.date), payload, { EX: CARD_PACK_TTL.pool });
-    // 補跑舊日期的池子時，不要把比較新的 latest 蓋回去
-    if (!latestDate || latestDate <= pool.date) {
-        await redisClient.set(cardPackKeys.poolLatest, payload, { EX: CARD_PACK_TTL.pool });
-    }
 }
 
 /** 給 cron 用的包裝：函式名稱會成為排程任務名稱，回傳值用不到 */

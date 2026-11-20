@@ -5,6 +5,8 @@ import errorHandler from '../src/middleware/errorHandler';
 import cardPackRoutes from '../src/routes/cardPack';
 import { CARD_PACK_DAILY_OPENS } from '../src/constant/cardPack';
 import { cardPackKeys } from '../src/modules/cardPack/keys';
+import { collectSnapshots } from '../src/modules/cardPack/marketData';
+import { HOT_COMPANIES } from '../src/constant/hotCompanies';
 import type { CardPackPool } from '../src/types/cardPack';
 import type { FakeRedis } from './fakeRedis';
 
@@ -24,7 +26,23 @@ jest.mock('../src/middleware/auth', () => ({
     },
 }));
 
+// 真的 verifyAdmin 會查資料庫；這裡只驗證「有沒有擋非管理員」的串接，換成用 header 標記管理員
+jest.mock('../src/middleware/adminAuth', () => ({
+    verifyAdmin: (req: any, _res: any, next: any) => {
+        const { AuthError } = require('../src/modules/errors');
+        if (req.headers['x-test-admin'] !== '1') return next(new AuthError('需要管理員權限'));
+        next();
+    },
+}));
+
+// 不碰真的 Yahoo 與資料庫
+jest.mock('../src/modules/cardPack/marketData', () => {
+    class MarketOpenError extends Error {}
+    return { collectSnapshots: jest.fn(), MarketOpenError };
+});
+
 const redis = redisClient as unknown as FakeRedis;
+const mockedCollect = collectSnapshots as unknown as jest.Mock;
 
 const app = express();
 app.use(express.json());
@@ -32,6 +50,18 @@ app.use('/card-pack', cardPackRoutes);
 app.use(errorHandler);
 
 const asUser = (id = 'user-1') => ({ 'x-test-user': id });
+const asAdmin = () => ({ ...asUser('admin-1'), 'x-test-admin': '1' });
+
+const POOL_DATE = '2026-11-19';
+const content = {
+    sentiment: 'bullish',
+    zh: { headline: '上傳的標題', summary: '摘要', points: ['a', 'b', 'c'], watch: '觀察' },
+    en: { headline: 'Uploaded headline', summary: 'Summary', points: ['a', 'b', 'c'], watch: 'Watch' },
+};
+const uploadBody = (count = 8) => ({
+    date: POOL_DATE,
+    cards: HOT_COMPANIES.slice(0, count).map((c) => ({ symbol: c.symbol, ...content })),
+});
 
 async function seedPool() {
     const pool: CardPackPool = {
@@ -54,7 +84,22 @@ async function seedPool() {
 
 beforeAll(() => jest.spyOn(console, 'error').mockImplementation(() => {})); // errorHandler 會把每個錯誤印出來
 afterAll(() => jest.restoreAllMocks());
-beforeEach(() => redis.reset());
+beforeEach(() => {
+    redis.reset();
+    mockedCollect.mockReset();
+    mockedCollect.mockResolvedValue({
+        date: POOL_DATE,
+        snapshots: HOT_COMPANIES.map((c, i) => ({
+            symbol: c.symbol,
+            name: c.name,
+            date: POOL_DATE,
+            recent: [],
+            todaySource: 'db',
+            baselineStale: false,
+            signals: { price: 100, dayChgPct: i - 5, volume: 1000, volumeRatio: 1, moveMultiple: 1, change20dPct: 0, score: i },
+        })),
+    });
+});
 
 describe('GET /card-pack/today（公開）', () => {
     test('不用登入；卡池還沒好時 ready 為 false', async () => {
@@ -123,6 +168,48 @@ describe('需要登入的路由', () => {
         for (let i = 0; i < CARD_PACK_DAILY_OPENS; i++) await request(app).post('/card-pack/draw').set(asUser('user-a'));
         const res = await request(app).post('/card-pack/draw').set(asUser('user-b'));
         expect(res.status).toBe(200);
+    });
+});
+
+describe('POST /card-pack/pool（管理員上傳卡池）', () => {
+    test('沒有登入：401；已登入但不是管理員：401，都不會去抓行情或寫入', async () => {
+        expect((await request(app).post('/card-pack/pool').send(uploadBody())).status).toBe(401);
+        const notAdmin = await request(app).post('/card-pack/pool').set(asUser()).send(uploadBody());
+        expect(notAdmin.status).toBe(401);
+        expect(notAdmin.body.message).toBe('需要管理員權限');
+        expect(mockedCollect).not.toHaveBeenCalled();
+        expect(redis.strings.size).toBe(0);
+    });
+
+    test('管理員上傳成功：回寫入的張數，之後一般使用者馬上看得到卡池、抽得到上傳的內容', async () => {
+        const res = await request(app).post('/card-pack/pool').set(asAdmin()).send(uploadBody(8));
+
+        expect(res.status).toBe(200);
+        expect(res.body).toMatchObject({ success: true, data: { date: POOL_DATE, count: 8, skipped: [], isLatest: true } });
+
+        const today = await request(app).get('/card-pack/today');
+        expect(today.body.data).toMatchObject({ ready: true, date: POOL_DATE });
+        expect(today.body.data.movers).toHaveLength(8);
+
+        const draw = await request(app).post('/card-pack/draw').set(asUser('player-1'));
+        expect(draw.status).toBe(200);
+        expect(draw.body.data.card.zh.headline).toBe('上傳的標題');
+    });
+
+    test('內容有問題：400 帶出原因，不寫入', async () => {
+        const body = uploadBody();
+        body.cards[0]!.zh = { ...content.zh, watch: '建議買進' };
+
+        const res = await request(app).post('/card-pack/pool').set(asAdmin()).send(body);
+        expect(res.status).toBe(400);
+        expect(res.body.message).toMatch(/買進/);
+        expect(redis.strings.size).toBe(0);
+    });
+
+    test('日期和行情對不上：409', async () => {
+        const res = await request(app).post('/card-pack/pool').set(asAdmin()).send({ ...uploadBody(), date: '2026-11-18' });
+        expect(res.status).toBe(409);
+        expect(redis.strings.size).toBe(0);
     });
 });
 

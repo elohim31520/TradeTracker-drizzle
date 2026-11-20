@@ -1,7 +1,9 @@
 import Joi from 'joi';
-import { ServerError } from '../errors';
+import { ClientError, ServerError } from '../errors';
 import { parseAiJson } from '../util';
-import type { CardContent, CardSentiment } from '../../types/cardPack';
+import { CARD_PACK_MIN_POOL_SIZE } from '../../constant/cardPack';
+import { HOT_COMPANIES } from '../../constant/hotCompanies';
+import type { CardContent, CardPackPublishInput, CardSentiment } from '../../types/cardPack';
 import type { CompanySnapshot } from './snapshotBuilder';
 
 /** 模型產出的卡片內容：文字只有 zh / en 兩份與走勢偏向，數字一律由程式填（見 CardSignals） */
@@ -36,9 +38,14 @@ const FORBIDDEN_PATTERNS = [
     /price target|guarantee|stop[- ]loss|take[- ]profit|(?:should|must|recommend(?:ed)? to) (?:buy|sell)/i,
 ];
 
-function assertNoAdvice(...contents: CardContent[]) {
+/** 回傳文字裡第一個投資建議用語；沒有就回 undefined */
+function findAdvice(...contents: CardContent[]): string | undefined {
     const text = contents.flatMap((c) => [c.headline, c.summary, c.watch, ...c.points]).join('\n');
-    const hit = FORBIDDEN_PATTERNS.map((pattern) => pattern.exec(text)?.[0]).find(Boolean);
+    return FORBIDDEN_PATTERNS.map((pattern) => pattern.exec(text)?.[0]).find(Boolean);
+}
+
+function assertNoAdvice(...contents: CardContent[]) {
+    const hit = findAdvice(...contents);
     if (hit) throw new ServerError(`卡片文字含有投資建議用語「${hit}」`);
 }
 
@@ -50,6 +57,47 @@ export function parseCardContent(text: string): GeneratedContent {
     }
     assertNoAdvice(value.zh, value.en);
     return value as GeneratedContent;
+}
+
+// ---------- 驗證（管理員上傳的卡池，POST /card-pack/pool）----------
+
+// 和模型輸出同一組欄位與上限，多一個 symbol
+const postedCardSchema = modelOutputSchema.keys({
+    // 容忍 "amd"、前後空白這類大小寫差異，統一轉成大寫；不在熱門名單裡的代號會被拒絕
+    symbol: Joi.string()
+        .trim()
+        .uppercase()
+        .valid(...HOT_COMPANIES.map((c) => c.symbol))
+        .required(),
+});
+
+const publishSchema = Joi.object({
+    date: Joi.string()
+        .pattern(/^\d{4}-\d{2}-\d{2}$/)
+        .required(),
+    cards: Joi.array()
+        .items(postedCardSchema)
+        .min(CARD_PACK_MIN_POOL_SIZE)
+        .max(HOT_COMPANIES.length)
+        .unique('symbol')
+        .required(),
+}).required(); // 沒有 body（undefined）時整個物件就是缺少，不能放行
+
+/**
+ * 驗證並整理管理員上傳的卡池內容（代號轉大寫、sentiment 轉小寫、文字去頭尾空白，多餘欄位丟掉）。
+ * 格式不符或含有投資建議用語時丟出 ClientError（400），整批都不收。
+ */
+export function parsePublishInput(body: unknown): CardPackPublishInput {
+    const { error, value } = publishSchema.validate(body, { stripUnknown: true });
+    if (error) {
+        throw new ClientError(`上傳的卡池格式不符: ${error.details.map((d) => d.message).join(', ')}`);
+    }
+    const input = value as CardPackPublishInput;
+    for (const card of input.cards) {
+        const hit = findAdvice(card.zh, card.en);
+        if (hit) throw new ClientError(`${card.symbol} 的卡片文字含有投資建議用語「${hit}」`);
+    }
+    return input;
 }
 
 // ---------- Prompt ----------

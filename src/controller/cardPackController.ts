@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import cardPackService from '../services/cardPackService';
+import { publishCardPack } from '../modules/cardPack/cardPackPublisher';
 import { success } from '../modules/responseHelper';
 
 async function getToday(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -29,6 +30,15 @@ async function draw(req: Request, res: Response, next: NextFunction): Promise<vo
     }
 }
 
+/** 管理員上傳卡池：內容由本機寫好後 POST 上來，路由已先驗證登入與管理員權限 */
+async function publishPool(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+        res.json(success(await publishCardPack(req.body)));
+    } catch (error) {
+        next(error);
+    }
+}
+
 /** 開發用：重設自己的次數與紀錄；路由只在非 production 註冊 */
 async function devReset(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -39,4 +49,4 @@ async function devReset(req: Request, res: Response, next: NextFunction): Promis
     }
 }
 
-export default { getToday, getMe, draw, devReset };
+export default { getToday, getMe, draw, publishPool, devReset };
