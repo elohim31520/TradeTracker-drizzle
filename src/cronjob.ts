@@ -3,6 +3,7 @@ import { crawlMarketPriceSnapshots } from './modules/crawler/yPriceSnapshots'
 import { crawlStockPrices } from './modules/crawler/yStockPrices'
 import { generateAndSaveNews } from './modules/aiNewsGenerator';
 import { generateAndCacheMarketSummary } from './modules/marketSummarizer'
+import { ensureCardPackPool, generateAndCacheCardPack } from './modules/cardPack/cardPackGenerator'
 import { connectRedis } from './modules/redis';
 import { crawlCompanyMetrics } from './modules/crawler/yfiance'
 import logger from './modules/logger'
@@ -12,7 +13,7 @@ interface CronConfig {
 	mission: () => Promise<void> | void;
 }
 
-connectRedis()
+const redisReady = connectRedis()
 
 function createCronJob({ schedule, mission }: CronConfig): CronJob {
 	if (!schedule) {
@@ -66,6 +67,19 @@ if (process.env.NODE_ENV === 'production') {
 		schedule: '50 7 * * *',
 		mission: generateAndCacheMarketSummary,
 	})
+
+	/**
+	 * 卡包的卡池：美股收盤後，台北週二到週六 06:30（對應美股週一到週五的收盤，與股價爬蟲同一組日子）。
+	 * 自己從 Yahoo 取行情，不依賴 06:00 的股價爬蟲；盤中會自動略過，當天已有池子也會略過，重跑安全。
+	 */
+	createCronJob({
+		schedule: '30 6 * * 2-6',
+		mission: generateAndCacheCardPack,
+	})
+
+	// 容器啟動時如果還沒有卡池（第一次部署、Redis 被清掉、排程連續失敗到過期），補生成一次，不用等到下一個排程。
+	// 在背景跑，不擋住上面的排程；已經有卡池就什麼都不做。開發環境不補（要生成請用 script/generateCardPack.ts）
+	redisReady.then(ensureCardPackPool).catch((err) => logger.error('[CardPack] 啟動時補生成卡池失敗', err))
 } else {
 	createCronJob({
 		schedule: '09 17 * * *',
@@ -90,5 +104,10 @@ if (process.env.NODE_ENV === 'production') {
 	createCronJob({
 		schedule: '25 21 * * *',
 		mission: generateAndCacheMarketSummary,
+	})
+
+	createCronJob({
+		schedule: '45 21 * * *',
+		mission: generateAndCacheCardPack,
 	})
 }

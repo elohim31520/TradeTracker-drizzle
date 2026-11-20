@@ -9,6 +9,7 @@ import stockRoutes from './routes/stock'
 import newsRoutes from './routes/news'
 import marketRoutes from './routes/market'
 import balanceRoutes from './routes/balances'
+import cardPackRoutes from './routes/cardPack'
 import errorHandler from './middleware/errorHandler'
 import 'dotenv/config';
 import helmet from 'helmet'
@@ -47,6 +48,7 @@ app.use('/stock', stockRoutes)
 app.use('/news', newsRoutes)
 app.use('/market', marketRoutes)
 app.use('/balance', balanceRoutes)
+app.use('/card-pack', cardPackRoutes)
 
 app.use(errorHandler)
 

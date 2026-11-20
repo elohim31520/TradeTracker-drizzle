@@ -1,0 +1,142 @@
+import express from 'express';
+import request from 'supertest';
+import redisClient from '../src/modules/redis';
+import errorHandler from '../src/middleware/errorHandler';
+import cardPackRoutes from '../src/routes/cardPack';
+import { CARD_PACK_DAILY_OPENS } from '../src/constant/cardPack';
+import { cardPackKeys } from '../src/modules/cardPack/keys';
+import type { CardPackPool } from '../src/types/cardPack';
+import type { FakeRedis } from './fakeRedis';
+
+jest.mock('../src/modules/redis', () => ({
+    __esModule: true,
+    default: require('./fakeRedis').createFakeRedis(),
+}));
+
+// 真的 authMiddleware 會讀 secrets/ 底下的金鑰；這裡只驗證「有沒有登入」的串接，換成用 header 帶使用者
+jest.mock('../src/middleware/auth', () => ({
+    authMiddleware: (req: any, _res: any, next: any) => {
+        const { AuthError } = require('../src/modules/errors');
+        const id = req.headers['x-test-user'];
+        if (!id) return next(new AuthError('未提供有效的授權標頭'));
+        req.user = { id, email: 'test@example.com', name: 'Test' };
+        next();
+    },
+}));
+
+const redis = redisClient as unknown as FakeRedis;
+
+const app = express();
+app.use(express.json());
+app.use('/card-pack', cardPackRoutes);
+app.use(errorHandler);
+
+const asUser = (id = 'user-1') => ({ 'x-test-user': id });
+
+async function seedPool() {
+    const pool: CardPackPool = {
+        date: '2026-11-19',
+        generated_at: '2026-11-20T00:00:00.000Z',
+        cards: Array.from({ length: 21 }, (_, i) => ({
+            id: `2026-11-19:S${i}`,
+            date: '2026-11-19',
+            symbol: `S${i}`,
+            name: `Company ${i}`,
+            rarity: 'common' as const,
+            sentiment: 'neutral' as const,
+            signals: { price: 100, dayChgPct: i, volume: 1000, volumeRatio: 1, moveMultiple: 1, change20dPct: 0, score: i },
+            zh: { headline: `標題${i}`, summary: '摘要', points: ['a', 'b', 'c'], watch: '觀察' },
+            en: { headline: `Headline ${i}`, summary: 'Summary', points: ['a', 'b', 'c'], watch: 'Watch' },
+        })),
+    };
+    await redis.set(cardPackKeys.poolLatest, JSON.stringify(pool));
+}
+
+beforeAll(() => jest.spyOn(console, 'error').mockImplementation(() => {})); // errorHandler 會把每個錯誤印出來
+afterAll(() => jest.restoreAllMocks());
+beforeEach(() => redis.reset());
+
+describe('GET /card-pack/today（公開）', () => {
+    test('不用登入；卡池還沒好時 ready 為 false', async () => {
+        const res = await request(app).get('/card-pack/today');
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data).toMatchObject({ ready: false, date: null, movers: [] });
+    });
+
+    test('卡池好了之後回傳今日異動，沒有任何卡片內容', async () => {
+        await seedPool();
+        const res = await request(app).get('/card-pack/today');
+        expect(res.body.data.ready).toBe(true);
+        expect(res.body.data.movers[0]).toEqual({ symbol: 'S20', name: 'Company 20', dayChgPct: 20, volumeRatio: 1 });
+        expect(JSON.stringify(res.body)).not.toMatch(/標題|Headline|rarity/);
+    });
+});
+
+describe('需要登入的路由', () => {
+    test('沒有登入：GET /me 與 POST /draw 都是 401', async () => {
+        await seedPool();
+        expect((await request(app).get('/card-pack/me')).status).toBe(401);
+        const draw = await request(app).post('/card-pack/draw');
+        expect(draw.status).toBe(401);
+        expect(redis.strings.size).toBe(1); // 只有 seed 的卡池，沒有人被扣次數
+    });
+
+    test('卡池還沒準備好：503「今日卡包準備中」，不扣次數', async () => {
+        const res = await request(app).post('/card-pack/draw').set(asUser());
+        expect(res.status).toBe(503);
+        expect(res.body).toMatchObject({ success: false, code: 503, message: '今日卡包準備中' });
+
+        const me = await request(app).get('/card-pack/me').set(asUser());
+        expect(me.body.data.remaining).toBe(CARD_PACK_DAILY_OPENS);
+    });
+
+    test('抽卡成功：回整張卡與剩餘次數，且不允許被快取', async () => {
+        await seedPool();
+        const res = await request(app).post('/card-pack/draw').set(asUser());
+
+        expect(res.status).toBe(200);
+        expect(res.headers['cache-control']).toBe('no-store');
+        expect(res.body.data.card.id).toMatch(/^2026-11-19:S\d+$/);
+        expect(res.body.data.card.zh.headline).toMatch(/^標題/);
+        expect(res.body.data.remaining).toBe(CARD_PACK_DAILY_OPENS - 1);
+
+        const me = await request(app).get('/card-pack/me').set(asUser());
+        expect(me.headers['cache-control']).toBe('no-store');
+        expect(me.body.data.remaining).toBe(CARD_PACK_DAILY_OPENS - 1);
+        expect(me.body.data.history).toHaveLength(1);
+        expect(me.body.data.history[0].id).toBe(res.body.data.card.id);
+    });
+
+    test('連抽到次數用完後 429', async () => {
+        await seedPool();
+        for (let i = 0; i < CARD_PACK_DAILY_OPENS; i++) {
+            expect((await request(app).post('/card-pack/draw').set(asUser())).status).toBe(200);
+        }
+        const res = await request(app).post('/card-pack/draw').set(asUser());
+        expect(res.status).toBe(429);
+        expect(res.body.message).toBe('今日抽卡次數已用完');
+    });
+
+    test('另一個使用者不受影響', async () => {
+        await seedPool();
+        for (let i = 0; i < CARD_PACK_DAILY_OPENS; i++) await request(app).post('/card-pack/draw').set(asUser('user-a'));
+        const res = await request(app).post('/card-pack/draw').set(asUser('user-b'));
+        expect(res.status).toBe(200);
+    });
+});
+
+describe('POST /card-pack/dev/reset（非 production 才有）', () => {
+    test('重設自己的次數與紀錄', async () => {
+        await seedPool();
+        await request(app).post('/card-pack/draw').set(asUser());
+        expect((await request(app).post('/card-pack/dev/reset').set(asUser())).status).toBe(200);
+
+        const me = await request(app).get('/card-pack/me').set(asUser());
+        expect(me.body.data).toMatchObject({ remaining: CARD_PACK_DAILY_OPENS, history: [] });
+    });
+
+    test('一樣要登入', async () => {
+        expect((await request(app).post('/card-pack/dev/reset')).status).toBe(401);
+    });
+});

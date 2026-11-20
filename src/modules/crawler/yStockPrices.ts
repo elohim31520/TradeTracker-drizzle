@@ -50,7 +50,8 @@ async function getStockPrice(symbol: string): Promise<Omit<StockPriceInput, 'com
 
     if (result.marketState === 'REGULAR') throw new MarketOpenError();
 
-    // regularMarketChangePercent 是當日漲跌幅（小數，例如 -0.012 代表 -1.2%）
+    // regularMarketChangePercent 是當日漲跌幅，單位已經是百分比（例如 -1.23 代表 -1.23%，不是 -0.0123），
+    // 與用昨收算出來的結果一致，所以 toFixed(2) 不會損失精度
     const price = result.regularMarketPrice?.toString();
     const dayChg = result.regularMarketChangePercent != null
         ? result.regularMarketChangePercent.toFixed(2)
