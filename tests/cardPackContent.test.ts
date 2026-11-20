@@ -39,6 +39,24 @@ describe('parseCardContent', () => {
         expect(() => parseCardContent(JSON.stringify({ ...validOutput, sentiment: 'moon' }))).toThrow(/格式不符/);
     });
 
+    test('英文標題與概述照 prompt 寫出來的長度要能通過：一句話的英文標題常超過 60 字元', () => {
+        const en = {
+            ...validOutput.en,
+            headline: 'NVIDIA slides 3.3% on heavy volume as chip names extend a broad semiconductor pullback', // 88 字元
+            summary: 'Closed lower with swings well above its recent average. '.repeat(11).trim(), // 約 600 字元
+        };
+        expect(en.headline.length).toBeGreaterThan(60);
+        expect(en.summary.length).toBeGreaterThan(500);
+        expect(() => parseCardContent(JSON.stringify({ ...validOutput, en }))).not.toThrow();
+    });
+
+    test('標題與概述仍然有上限，失控的長輸出照樣被拒絕', () => {
+        const longHeadline = { ...validOutput, en: { ...validOutput.en, headline: 'x'.repeat(121) } };
+        expect(() => parseCardContent(JSON.stringify(longHeadline))).toThrow(/格式不符/);
+        const longSummary = { ...validOutput, zh: { ...validOutput.zh, summary: '字'.repeat(801) } };
+        expect(() => parseCardContent(JSON.stringify(longSummary))).toThrow(/格式不符/);
+    });
+
     test('缺少欄位或重點數量不對被拒絕', () => {
         const noWatch = { ...validOutput, zh: { ...validOutput.zh, watch: undefined } };
         expect(() => parseCardContent(JSON.stringify(noWatch))).toThrow(/格式不符/);

@@ -13,9 +13,12 @@ export interface GeneratedContent {
 
 // ---------- 驗證 ----------
 
+// 上限只是擋失控的輸出與版面爆掉，要留得下模型照 prompt 寫出來的長度：
+// 英文一句話的標題常超過 60 字元（上線第一次跑就因為 en.headline 超過 60 被整張退回）；
+// 英文概述 40～80 個字約 450～560 字元，所以概述上限給 800
 const contentSchema = Joi.object({
-    headline: Joi.string().trim().max(60).required(),
-    summary: Joi.string().trim().max(500).required(),
+    headline: Joi.string().trim().max(120).required(),
+    summary: Joi.string().trim().max(800).required(),
     points: Joi.array().items(Joi.string().trim().max(200)).min(2).max(4).required(),
     watch: Joi.string().trim().max(250).required(),
 });
@@ -94,7 +97,7 @@ ${rows}
                 "watch": "後續值得觀察的一件事（一句話，條件式）"
             },
             "en": {
-                "headline": "One-sentence summary",
+                "headline": "One-sentence summary (under 15 words)",
                 "summary": "Trend overview, 40-80 words",
                 "points": ["Point 1", "Point 2", "Point 3"],
                 "watch": "One thing worth watching next (conditional phrasing)"
